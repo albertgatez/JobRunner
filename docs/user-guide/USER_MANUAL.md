@@ -57,14 +57,14 @@ g++ -std=c++20 -O2 \
   src/process/*.cpp \
   src/protocol/*.cpp \
   -I/usr/include/nlohmann \
-  -o jobrunner-server
+  -o ./src/build/jobrunner-server 
 
 # CLI client
 g++ -std=c++20 -O2 \
   src/client/*.cpp \
   src/protocol/*.cpp \
   -I/usr/include/nlohmann \
-  -o jobrunner-cli
+  -o ./src/build/jobrunner-cli
 ```
 
 ---
