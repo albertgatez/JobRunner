@@ -1,12 +1,14 @@
 # ADR-001 — Lenguaje y herramientas
 
+
 | Campo          | Valor                                                  |
 | -------------- | ------------------------------------------------------ |
 | Estado         | Propuesto                                              |
 | Fecha          | 2026-09-30                                             |
 | Autor          | Equipo JUAN                                            |
 | Req. afectados | RNF-01, RNF-02, RNF-03, RNF-17, RNF-18, RNF-19, RNF-20 |
-| Tipo           | Arquitectura / Tecnología                              |
+| Tipo           | Arquitectura / Tecnología                             |
+
 ## Contexto
 
 JobRunner requiere ejecutarse sobre Linux y realizar operaciones relacionadas con procesos, señales, concurrencia, sockets, persistencia y manejo de recursos del sistema.
@@ -88,15 +90,17 @@ Se utilizará **C++ como lenguaje principal**.
 
 La configuración inicial de herramientas será:
 
-| Componente              | Herramienta      |
-| ----------------------- | ---------------- |
-| Lenguaje                | C++              |
-| Compilador              | GCC              |
-| Estándar                | C++20 o superior |
-| Sistema de construcción | CMake            |
-| Pruebas automatizadas   | Catch2           |
-| Depuración              | GDB              |
-| Control de versiones    | Git              |
+
+| Componente                  | Herramienta      |
+| --------------------------- | ---------------- |
+| Lenguaje                    | C++              |
+| Compilador                  | GCC              |
+| Estándar                   | C++20 o superior |
+| Sistema de construcción    | CMake            |
+| Pruebas automatizadas | Catch2           |
+| Serialización y deserialización JSON | nlohmann/json           |
+| Depuración                 | GDB              |
+| Control de versiones        | Git              |
 
 CMake será utilizado para centralizar:
 
@@ -181,12 +185,13 @@ Cada ejecución deberá identificar:
 
 ## Requisitos afectados
 
-|Requisito|Relación|
-|---|---|
-|RNF-01|El proyecto debe compilar y ejecutarse en Linux.|
-|RNF-02|CMake permitirá documentar y reproducir la construcción.|
-|RNF-03|El ejecutable deberá funcionar sin privilegios de root para operación normal.|
-|RNF-17|El lenguaje y herramientas deben permitir una arquitectura modular.|
-|RNF-18|Las interfaces y decisiones deberán documentarse.|
-|RNF-19|Se utilizarán advertencias estrictas y análisis estático.|
-|RNF-20|Las pruebas automatizadas deberán poder ejecutarse mediante un comando documentado.|
+
+| Requisito | Relación                                                                            |
+| --------- | ------------------------------------------------------------------------------------ |
+| RNF-01    | El proyecto debe compilar y ejecutarse en Linux.                                     |
+| RNF-02    | CMake permitirá documentar y reproducir la construcción.                           |
+| RNF-03    | El ejecutable deberá funcionar sin privilegios de root para operación normal.      |
+| RNF-17    | El lenguaje y herramientas deben permitir una arquitectura modular.                  |
+| RNF-18    | Las interfaces y decisiones deberán documentarse.                                   |
+| RNF-19    | Se utilizarán advertencias estrictas y análisis estático.                         |
+| RNF-20    | Las pruebas automatizadas deberán poder ejecutarse mediante un comando documentado. |
