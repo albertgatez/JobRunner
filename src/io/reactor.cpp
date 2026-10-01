@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <stdexcept>
 
@@ -59,8 +60,11 @@ void Reactor::set_write_interest(int fd, bool interested, Callback on_writable) 
     if (it == fds_.end()) return;  // fd may have just been removed by another callback
     it->second.on_writable = std::move(on_writable);
 
+    std::uint32_t events = EPOLLIN;
+    if (interested) events |= EPOLLOUT;
+
     epoll_event ev{};
-    ev.events = static_cast<uint32_t>(EPOLLIN | (interested ? EPOLLOUT : 0));
+    ev.events = events;
     ev.data.fd = fd;
     if (epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, fd, &ev) != 0) throw_errno("epoll_ctl MOD");
 }
