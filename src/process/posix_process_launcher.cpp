@@ -27,21 +27,48 @@ PosixProcessLauncher::PosixProcessLauncher(Reactor& reactor) : reactor_(reactor)
 pid_t PosixProcessLauncher::launch(const std::string& command,
                                     const std::vector<std::string>& args,
                                     OutputCallback on_output, ExitCallback on_exit) {
+    // O_CLOEXEC: los extremos de lectura de los pipes de un job no deben
+    // filtrarse a los hijos de OTROS jobs (dup2 limpia el flag en el fd
+    // que queda como stdout/stderr del hijo).
     int stdout_pipe[2];
     int stderr_pipe[2];
-    if (pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0) {
+    if (pipe2(stdout_pipe, O_CLOEXEC) != 0) {
         throw std::runtime_error(std::string("pipe: ") + std::strerror(errno));
     }
+    if (pipe2(stderr_pipe, O_CLOEXEC) != 0) {
+        int saved = errno;
+        close(stdout_pipe[0]);
+        close(stdout_pipe[1]);
+        throw std::runtime_error(std::string("pipe: ") + std::strerror(saved));
+    }
+
+    // argv se arma ANTES del fork: en el hijo no conviene asignar memoria.
+    std::vector<char*> argv;
+    argv.push_back(const_cast<char*>(command.c_str()));
+    for (const auto& a : args) argv.push_back(const_cast<char*>(a.c_str()));
+    argv.push_back(nullptr);
 
     pid_t pid = fork();
     if (pid < 0) {
-        throw std::runtime_error(std::string("fork: ") + std::strerror(errno));
+        int saved = errno;
+        close(stdout_pipe[0]);
+        close(stdout_pipe[1]);
+        close(stderr_pipe[0]);
+        close(stderr_pipe[1]);
+        throw std::runtime_error(std::string("fork: ") + std::strerror(saved));
     }
 
     if (pid == 0) {
-        // Child: own process group (so cancellation can reach grandchildren
-        // too), pipes wired to stdout/stderr, then exec.
         setpgid(0, 0);
+
+        // CAUSA DEL BUG DE CANCELACION: Reactor bloquea SIGCHLD/SIGINT/SIGTERM
+        // (sigprocmask) para leerlos via signalfd. La mascara de senales se
+        // hereda en fork() y SOBREVIVE a execvp(), asi que sin esto el job
+        // arrancaba con SIGTERM bloqueado y kill(-pid, SIGTERM) quedaba
+        // pendiente para siempre. Hay que desbloquear todo antes del exec.
+        sigset_t empty;
+        sigemptyset(&empty);
+        sigprocmask(SIG_SETMASK, &empty, nullptr);
 
         dup2(stdout_pipe[1], STDOUT_FILENO);
         dup2(stderr_pipe[1], STDERR_FILENO);
@@ -50,16 +77,15 @@ pid_t PosixProcessLauncher::launch(const std::string& command,
         close(stderr_pipe[0]);
         close(stderr_pipe[1]);
 
-        std::vector<char*> argv;
-        argv.push_back(const_cast<char*>(command.c_str()));
-        for (auto& a : args) argv.push_back(const_cast<char*>(a.c_str()));
-        argv.push_back(nullptr);
-
         execvp(command.c_str(), argv.data());
-        _exit(127);  // execvp only returns on failure
+        _exit(127);
     }
 
-    // Parent
+    // Tambien desde el padre: evita la carrera en la que cancel() llega antes
+    // de que el hijo ejecute su propio setpgid() y kill(-pid) falla con ESRCH.
+    // Si el hijo ya hizo exec, setpgid falla con EACCES y es inofensivo.
+    setpgid(pid, pid);
+
     close(stdout_pipe[1]);
     close(stderr_pipe[1]);
     int out_fd = stdout_pipe[0];
@@ -93,7 +119,7 @@ void PosixProcessLauncher::drain_pipe(pid_t pid, int fd, bool is_stderr) {
                                       std::string_view(buf.data(), static_cast<size_t>(n)));
             }
         } else if (n == 0) {
-            break;  // EOF
+            break;
         } else {
             if (errno == EAGAIN || errno == EWOULDBLOCK) break;
             if (errno == EINTR) continue;
@@ -107,10 +133,8 @@ void PosixProcessLauncher::reap_exited_children() {
     pid_t pid;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         auto it = children_.find(pid);
-        if (it == children_.end()) continue;  // not one of ours
+        if (it == children_.end()) continue;
 
-        // Drain any output produced right before exit, then stop watching
-        // the pipes — the kernel may reuse this pid once we return.
         drain_pipe(pid, it->second.stdout_fd, false);
         drain_pipe(pid, it->second.stderr_fd, true);
 
@@ -130,7 +154,6 @@ void PosixProcessLauncher::reap_exited_children() {
 }
 
 void PosixProcessLauncher::send_signal(pid_t pid, int signal) {
-    // Negative pid targets the whole process group set up in launch().
     ::kill(-pid, signal);
 }
 
