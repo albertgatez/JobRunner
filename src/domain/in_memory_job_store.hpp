@@ -8,7 +8,7 @@ namespace jobrunner {
 
 // Hito 1 persistence backend: keeps everything in a std::map. Safe without
 // locks because the whole service runs on a single reactor thread (see
-// docs/decisions/0001-modelo-de-concurrencia.md). Swappable for
+// "docs/decisions/ADR-003 - Concurrencia.md"). Swappable for
 // SqliteJobStore in Hito 2 without changing IJobStore's callers.
 class InMemoryJobStore : public IJobStore {
    public:

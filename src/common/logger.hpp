@@ -9,7 +9,7 @@ namespace jobrunner {
 
 // Minimal single-threaded logger (RF-14, RNF-22). No locking is needed:
 // JobRunner's whole service runs on one reactor thread, so calls into this
-// class are never concurrent (see docs/decisions/0001-modelo-de-concurrencia.md).
+// class are never concurrent (see "docs/decisions/ADR-003 - Concurrencia.md").
 // Never logs raw job stdout/stderr content, only operational events with an
 // optional job id for correlation (RNF-15).
 class Logger {
