@@ -113,8 +113,9 @@ int main(int argc, char** argv) {
     //      (no se aceptan conexiones nuevas, pero las existentes
     //       pueden terminar sus requests en vuelo)
     //   3. reactor.stop() → desbloquea epoll_wait y sale del event loop
-    // Esto permite un shutdown controlado: los jobs en ejecución
-    // terminan naturalmente antes de que main() retorne.
+    // Esto detiene la aceptación de trabajos nuevos y el event loop.
+    // OJO: no espera ni termina los jobs en ejecución; pueden quedar
+    // huérfanos (pendiente, RNF-30).
     reactor.on_signal(SIGINT, [&](const struct signalfd_siginfo&) {
         logger.info("señal de apagado recibida, dejando de aceptar trabajos nuevos");
         listener.stop_accepting();
@@ -152,7 +153,9 @@ int main(int argc, char** argv) {
     //   • Todas las Connection se destruyen (fin del scope)
     //   • Los shared_ptr<Connection> en connections se liberan
     //   • Los destructores de cada módulo liberan recursos (fds, etc.)
-    // Si los jobs hijos siguen vivos, reciben SIGHUP al cerrarse
-    // el socket Unix (dependiendo de configuración del sistema).
+    // Los jobs en ejecución NO se terminan aquí: cada uno tiene su propio
+    // grupo de procesos y no recibe SIGHUP al cerrar el servidor, así que
+    // pueden quedar huérfanos. Pendiente (RNF-30): enviar SIGTERM a los
+    // jobs actibos y esperarlos antes de salir.
     return EXIT_SUCCESS;
 }

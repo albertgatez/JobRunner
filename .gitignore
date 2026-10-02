@@ -1,5 +1,5 @@
 # Executables
-src/build/
+build*/
 
 # Windows / macOS
 **/.DS_Store

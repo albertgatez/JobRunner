@@ -11,7 +11,7 @@ namespace jobrunner {
 // about (SIGCHLD, SIGINT, SIGTERM) are delivered through signalfd(2) as
 // ordinary readable events, so process supervision and network I/O share
 // one control flow and one thread — no locks are needed anywhere on job
-// state. See docs/decisions/0001-modelo-de-concurrencia.md for the
+// state. See "docs/decisions/ADR-003 - Concurrencia.md" for the
 // alternatives considered and why this one was chosen.
 class Reactor {
    public:
