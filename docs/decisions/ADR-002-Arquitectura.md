@@ -126,9 +126,9 @@ Request Service
 Separar explícitamente el cliente CLI del servicio JobRunner.
 
 ```text
-┌──────────────┐
-│ CLI Client   │
-└──────┬───────┘
+┌────────────┐
+│ CLI Client │
+└──────┬─────┘
        │
        │ Comunicación
        │ 
@@ -184,16 +184,16 @@ La arquitectura propuesta será:
 ┌──────────────────────────────────────────────────────────┐
 │                 JobRunner Server                         │
 │                                                          │
-│  ┌───────────────┐      ┌─────────────────────┐          │
-│  │ Network/API   │─────►│    Job Manager      │          │
-│  │ (sobre Reactor│      │  (Estado + Cola)    │          │
-│  │  epoll, ADR-003)│      └──────────┬──────────┘          │
-│  └───────────────┘                 │                     │
+│  ┌─────────────────┐      ┌───────────────────┐          │
+│  │ Network/API     │─────►│    Job Manager    │          │
+│  │ (sobre Reactor  │      │  (Estado + Cola)  │          │
+│  │  epoll, ADR-003)│      └────────┬──────────┘          │
+│  └─────────────────┘               │                     │
 │                    ┌───────────────┼──────────┐          │
 │                    ▼               ▼          ▼          │
-│               ┌────────┐     ┌──────────┐ ┌──────────┐   │
+│               ┌────────┐     ┌──────────┐ ┌───────────┐  │
 │               │ Queue  │     │ Process  │ │Persistence│  │
-│               │(dentro │     │ Manager  │ └──────────┘   │
+│               │(dentro │     │ Manager  │ └───────────┘  │
 │               │de Job  │     └──────────┘                │
 │               │Manager)│                                 │
 │               └────────┘                                 │
@@ -302,7 +302,7 @@ Las decisiones específicas relacionadas con concurrencia, persistencia, recuper
 | Event loop (`Reactor`)                      | Implementado (Hito 1)               | `Reactor` (`epoll` + `signalfd`), ver ADR-003                                            |
 | Job Manager                                 | Implementado (Hito 1)               | `JobManager`, `Job`                                                                      |
 | Process Manager                             | Implementado (Hito 1)               | `IProcessLauncher`, `PosixProcessLauncher`                                               |
-| Persistence                                 | Parcial: solo en memoria            | `IJobStore`, `InMemoryJobStore` (persistencia en disco: Hito 2, ADR futuro)                 |
+| Persistence                                 | Parcial: solo en memoria            | `IJobStore`, `InMemoryJobStore` (persistencia en disco: Hito 2, ADR futuro)              |
 | Logging                                     | Implementado (Hito 1)               | `Logger`                                                                                 |
 | Queue Manager                               | Pendiente (Hito 2)                  | Hoy `submit` lanza el proceso siempre, sin límite ni cola                                |
 | Configuration                               | Pendiente (Hito 2)                  | Solo se recibe la ruta del socket como argumento                                         |
