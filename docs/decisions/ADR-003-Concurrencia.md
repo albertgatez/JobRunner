@@ -2,7 +2,7 @@
 
 | Campo          | Valor                                                                                                                                        |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Estado         | Aprobado                                                                                                                                    |
+| Estado         | Aprobado                                                                                                                                     |
 | Fecha          | 2026-10-01                                                                                                                                   |
 | Autor          | Equipo JUAN                                                                                                                                  |
 | Req. afectados | RF-03, RF-04, RF-05, RF-06, RF-10, RF-22, RF-25, RF-26, RF-29, RF-30, RNF-04, RNF-07, RNF-08, RNF-09, RNF-27, RNF-29, RNF-30, RNF-33, RNF-34 |
@@ -134,7 +134,7 @@ Los mecanismos considerados son:
 - Requiere integrar correctamente sockets, procesos, pipes y eventos.
 - `epoll` introduce una dependencia específica de Linux, aunque Linux ya es la plataforma objetivo.
 
-### Alternativa 4 — Modelo híbrido
+### Alternativa 4 — Modelo híbrido con hilos (procesos para Jobs + hilos o `poll` para la red)
 
 Separar la concurrencia de atención del servidor de la concurrencia de ejecución de Jobs.
 
@@ -191,30 +191,85 @@ En este modelo:
 - Se deben diseñar cuidadosamente las responsabilidades entre componentes.
 - El uso de varios mecanismos de concurrencia aumenta la necesidad de pruebas.
 
+### Alternativa 5 — Un proceso por Job + event loop `epoll` de un solo hilo
+
+Los Jobs se ejecutan como procesos hijos. Un único hilo atiende, mediante `epoll`, las conexiones de clientes, los pipes de stdout/stderr de los Jobs y las señales (`SIGCHLD`, `SIGINT`, `SIGTERM`), que se reciben como eventos de lectura mediante `signalfd`.
+
+```text
+                  epoll (un solo hilo)
+      ┌────────────────┼──────────────────────┐
+      ▼                ▼                      ▼
+   sockets        pipes stdout/stderr      signalfd
+ (clientes)        (Jobs = procesos)     (SIGCHLD, SIGTERM)
+```
+
+**Ventajas:**
+
+- Aislamiento de Jobs mediante procesos.
+- Un solo flujo de control: el estado de los Jobs solo se modifica desde el event loop, por lo que no se requieren locks ni hay condiciones de carrera entre hilos (RNF-27).
+- La terminación de procesos (`SIGCHLD`), la salida de los Jobs y la red comparten el mismo mecanismo de eventos, lo que simplifica la supervisión (RF-29, RNF-30).
+- Evita crear hilos por cliente o por Job.
+- Comportamiento determinista y más fácil de probar y de depurar.
+
+**Desventajas y riesgos:**
+
+- Un callback lento o bloqueante detiene la atención de todos los clientes y Jobs.
+- No aprovecha varios núcleos para atender solicitudes (suficiente para la carga académica del proyecto).
+- Requiere mantener todos los descriptores en modo no bloqueante.
+- `epoll` y `signalfd` son específicos de Linux, plataforma objetivo del proyecto.
+
 ## Comparación
 
-|Criterio|Procesos|Hilos|`select/poll/epoll`|Híbrido|
-|---|--:|--:|--:|--:|
-|Aislamiento entre Jobs|Alto|Bajo|No aplica directamente|Alto|
-|Ejecución de comandos externos|Alto|Medio|No aplica directamente|Alto|
-|Manejo de señales|Directo|Indirecto|No aplica directamente|Directo|
-|Atención de múltiples clientes|Medio|Alto|Alto|Alto|
-|Complejidad|Media|Media|Media/Alta|Alta|
-|Riesgo de corrupción del servidor|Menor|Mayor|Depende de implementación|Menor|
-|Control de Jobs simultáneos|Bueno|Bueno|No resuelve por sí solo|Bueno|
-|Escalabilidad de conexiones|Media|Media/Alta|Alta|Alta|
-|Facilidad de cancelación|Alta|Media|No aplica directamente|Alta|
-|Adecuado para JobRunner|Sí|Parcial|Complementario|Sí|
+|Criterio|Procesos|Hilos|`select/poll/epoll`|Híbrido con hilos|Procesos + `epoll` (un hilo)|
+|---|--:|--:|--:|--:|--:|
+|Aislamiento entre Jobs|Alto|Bajo|No aplica directamente|Alto|Alto|
+|Ejecución de comandos externos|Alto|Medio|No aplica directamente|Alto|Alto|
+|Manejo de señales|Directo|Indirecto|No aplica directamente|Directo|Directo (`signalfd`)|
+|Atención de múltiples clientes|Medio|Alto|Alto|Alto|Alto|
+|Sincronización necesaria|Poca|Mucha|No aplica|Mucha|Ninguna (un hilo)|
+|Complejidad|Media|Media|Media/Alta|Alta|Media|
+|Riesgo de corrupción del servidor|Menor|Mayor|Depende de implementación|Menor|Menor|
+|Riesgo de bloqueo por callback lento|Bajo|Bajo|Alto|Medio|Alto|
+|Control de Jobs simultáneos|Bueno|Bueno|No resuelve por sí solo|Bueno|Bueno|
+|Escalabilidad de conexiones|Media|Media/Alta|Alta|Alta|Alta para la carga del proyecto|
+|Facilidad de cancelación|Alta|Media|No aplica directamente|Alta|Alta|
+|Adecuado para JobRunner|Sí|Parcial|Complementario|Parcial|**Sí (elegida)**|
 
 ## Decisión
 
-Se utilizará un **modelo híbrido basado en procesos para la ejecución de Jobs y multiplexación de I/O para la atención de clientes y eventos del servidor**.
+Se utilizará un modelo de **procesos para la ejecución de Jobs + event loop `epoll` de un solo hilo para la atención de clientes y eventos del servidor**.
 
 Los Jobs serán ejecutados mediante procesos hijos independientes.
 
-La atención de sockets, pipes y otros eventos del servidor utilizará un mecanismo de multiplexación de I/O. La implementación actual utiliza `epoll`, por lo que se mantendrá este mecanismo como base del modelo de concurrencia del servidor.
+La atención de sockets, pipes, señales y otros eventos del servidor utilizará un único hilo con multiplexación de I/O. La implementación actual utiliza `epoll` y `signalfd`, por lo que se mantendrá este mecanismo como base del modelo de concurrencia del servidor.
 
 No se utilizará un hilo independiente por cada Job como mecanismo principal de ejecución.
+
+En términos de las alternativas anteriores, se elige la **Alternativa 5** (procesos + `epoll` en un solo hilo) y se descarta la Alternativa 4 (híbrido con hilos).
+
+### Razones de la decisión
+
+1. **Consistencia sin locks.** Con un único hilo, el estado de los Jobs solo cambia dentro del event loop. Las transiciones de estado y las cancelaciones concurrentes se serializan por construcción, sin `mutex` ni condiciones de carrera.
+2. **Aislamiento.** Cada Job corre en su propio proceso. Un Job defectuoso no puede corromper la memoria del servidor.
+3. **Supervisión unificada.** `SIGCHLD` llega por `signalfd` como un evento más del loop, junto con sockets y pipes, lo que evita handlers asíncronos y simplifica liberar recursos y evitar zombies.
+4. **Alcance del proyecto.** La carga esperada es académica, por lo que el paralelismo de hilos en el servidor no aporta un beneficio que compense su complejidad (alternativa 4).
+
+**Costo asumido:** un callback que bloquee o tarde demasiado detiene la atención de todos los clientes. Por eso los descriptores deben ser no bloqueantes y el event loop no debe ejecutar operaciones largas.
+
+### Estado de implementación
+
+| Elemento                                                                                           | Estado                      |
+| -------------------------------------------------------------------------------------------------- | --------------------------- |
+| Event loop `epoll`, `signalfd`, pipes y sockets no bloqueantes                                     | Implementado (Hito 1)       |
+| Un proceso por Job con grupo de procesos propio y captura separada de stdout/stderr                | Implementado (Hito 1)       |
+| Restablecimiento de la máscara de señales en el hijo antes de `exec`                               | Implementado (Hito 1)       |
+| Detección de terminación de hijos y registro del código de salida                                  | Implementado (Hito 1)       |
+| Límite configurable `max_concurrent_jobs` y cola con capacidad máxima                              | Pendiente (Hito 2)          |
+| Escalamiento de cancelación (`SIGTERM` → `SIGKILL`)                                                | Pendiente (Hito 2, ADR futuro de cancelación) |
+| Política de saturación y backpressure                                                              | Pendiente (ADR futuro de saturación)         |
+| Manejo de error al crear el proceso (job marcado `FAILED` con diagnóstico, sin quedar en `QUEUED`) | Pendiente (Hito 2)          |
+| Cierre controlado sin procesos huérfanos (terminar y recolectar los Jobs en ejecución al apagar)   | Pendiente (Hito 2)          |
+
 ### Modelo propuesto
 
 ```text
@@ -260,7 +315,7 @@ Cada Job que pase de `QUEUED` a `RUNNING` será asociado con un proceso hijo.
 El servidor deberá:
 
 1. Crear el proceso.
-2. Configurar stdout y stderr.
+2. Configurar stdout y stderr, crear un grupo de procesos propio para el Job y restablecer en el proceso hijo la máscara de señales heredada del servidor antes de `exec`.
 3. Registrar el PID asociado.
 4. Actualizar el estado a `RUNNING`.
 5. Supervisar la terminación.
@@ -345,6 +400,8 @@ El Job Manager será el responsable de garantizar:
 running_jobs <= max_concurrent_jobs
 ```
 
+El contador de cupos se calcula a partir de **procesos realmente vivos**, no a partir del estado del Job. Un Job cancelado pasa a `CANCELED` de inmediato, pero su proceso sigue existiendo hasta recibir la señal y ser recolectado con `waitpid`. Por ello, el cupo se libera únicamente al procesar la terminación del proceso (`on_child_exit`), incluso si el Job ya estaba en `CANCELED`, y es en ese momento cuando se despacha el siguiente Job de la cola. Cancelar un Job en `QUEUED` no ocupa cupo: solo se retira de la cola.
+
 La condición deberá mantenerse incluso cuando:
 
 - lleguen varias solicitudes simultáneamente;
@@ -359,7 +416,7 @@ La cola será utilizada para mantener Jobs aceptados que todavía no cuentan con
 
 Cuando la capacidad de Jobs activos esté ocupada, un nuevo Job podrá permanecer en `QUEUED` hasta que exista capacidad disponible.
 
-La capacidad máxima de la cola y la política de comportamiento cuando esta se encuentre llena serán definidas en ADR-007.
+La capacidad máxima de la cola y la política de comportamiento cuando esta se encuentre llena serán definidas en un ADR posterior (saturación, aún no redactado).
 
 No se establecerá en este ADR una política específica de rechazo o backpressure.
 
@@ -376,7 +433,7 @@ La política concreta de:
 - estados finales;
 - escalamiento;
 
-será definida en ADR-006.
+será definida en un ADR posterior (cancelación, aún no redactado).
 
 ### Supervisión de procesos
 
@@ -412,7 +469,7 @@ Se establecen las siguientes reglas:
 
 1. Un Job solo puede tener un estado activo a la vez.
 2. Un Job no puede pasar de un estado terminal a `RUNNING`.
-3. El contador de Jobs activos debe coincidir con los Jobs realmente ejecutándose.
+3. El contador de Jobs activos debe coincidir con los procesos de Job realmente vivos (un Job `CANCELED` cuyo proceso aún no ha sido recolectado sigue ocupando cupo).
 4. La creación de un proceso debe respetar el límite de concurrencia.
 5. La terminación de un proceso debe liberar su cupo.
 6. Dos solicitudes de cancelación sobre el mismo Job deben producir un resultado coherente.
@@ -453,6 +510,11 @@ Se establecen las siguientes reglas:
 - `epoll` limita este mecanismo específico de I/O a plataformas compatibles con Linux.
 - Será necesario realizar pruebas de concurrencia y carga.
 - Una futura incorporación de hilos aumentaría la complejidad de sincronización y requeriría una revisión de esta decisión.
+- Al ser un solo hilo, un callback lento o bloqueante afecta la atención de todos los clientes y Jobs.
+- **Máscara de señales heredada (mitigado).** El servidor bloquea `SIGCHLD`, `SIGINT` y `SIGTERM` para usar `signalfd`, y esa máscara se hereda por `fork` y se conserva tras `exec`. Si el hijo no la restablece, el Job ignora `SIGTERM` y la cancelación no surte efecto. `PosixProcessLauncher` ya la restablece en el hijo antes de `exec`. Debe mantenerse una prueba de regresión que cancele un Job en ejecución y compruebe que el proceso realmente terminó.
+- **Fusión de `SIGCHLD` (mitigado).** Varias señales `SIGCHLD` pueden fusionarse en una sola lectura de `signalfd`. La recolección de hijos repite `waitpid(-1, WNOHANG)` hasta que no queden hijos terminados, lo que cubre el caso.
+- Si falla la creación del proceso (`fork` o `pipe`), el Job ya fue registrado. El Job Manager debe capturar el error, pasar el Job a `FAILED` con un mensaje de diagnóstico, registrarlo en la bitácora y retirarlo de la ventana de duplicados, para que ni quede en `QUEUED` indefinidamente ni se reutilice en un reenvío. Nota: hoy `is_valid_transition` no permite `QUEUED → FAILED`, por lo que al implementarlo habrá que agregar esa transición al modelo de estados. **Pendiente de implementar** (ver Estado de implementación).
+- Actualmente el apagado (`SIGINT`/`SIGTERM`) detiene el event loop sin terminar los Jobs en ejecución. Como cada Job tiene su propio grupo de procesos, no recibe `SIGHUP` al cerrar el servidor y podría quedar huérfano (RNF-30). **Pendiente de implementar** (ver Estado de implementación).
 
 ## Evidencia / prototipo
 
@@ -511,15 +573,15 @@ La existencia de un caso de prueba documentado no implica que el requisito haya 
 |RF-10|La arquitectura permite cancelar procesos en ejecución.|
 |RF-22|La desconexión de un cliente no termina los Jobs aceptados.|
 |RF-25|La cola limitada permite rechazar solicitudes cuando está llena.|
-|RF-26|La sincronización permite manejar cancelaciones concurrentes.|
+|RF-26|El event loop de un solo hilo serializa las cancelaciones concurrentes sobre un mismo Job.|
 |RF-29|El Process Manager detecta terminaciones inesperadas.|
 |RF-30|El modelo permite implementar una política de escalamiento de cancelación.|
 |RNF-04|Permite demostrar al menos tres Jobs simultáneos con límite 3.|
 |RNF-07|Garantiza que no se creen más procesos de Job que el límite.|
 |RNF-08|Los errores de clientes no deben terminar el servicio.|
 |RNF-09|Un Job anormal no debe afectar otros Jobs.|
-|RNF-27|La sincronización mantiene consistencia bajo concurrencia.|
+|RNF-27|El modelo de un solo hilo mantiene la consistencia de estados sin locks.|
 |RNF-29|El sistema limita procesos, clientes y otros recursos.|
-|RNF-30|El diseño contempla liberación de procesos y recursos.|
+|RNF-30|El diseño contempla liberación de procesos y recursos; el cierre sin huérfanos está pendiente (ver Estado de implementación).|
 |RNF-33|Las pruebas de estrés verifican liberación de recursos.|
 |RNF-34|Los riesgos de concurrencia deben tener pruebas asociadas.|

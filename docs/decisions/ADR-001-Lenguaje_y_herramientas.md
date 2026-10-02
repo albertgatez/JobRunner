@@ -1,4 +1,4 @@
-# ADR-001 — Lenguaje y herramientas
+# ADR-001 — Lenguaje y herramientas.
 
 | Campo          | Valor                                                  |
 | -------------- | ------------------------------------------------------ |
@@ -32,7 +32,7 @@ Se consideran principalmente **C++** y **Rust**, ambos adecuados para program
 
 Utilizar C++ como lenguaje principal, con GCC o Clang como compilador y CMake como sistema de construcción.
 
-**Ventajas:
+**Ventajas:**
 
 - Amplio soporte para programación de sistemas en Linux.
 - Acceso directo a APIs POSIX.
@@ -79,27 +79,31 @@ Se utilizará **C++ como lenguaje principal**.
 
 La configuración inicial de herramientas será:
 
-|Componente|Herramienta|
-|---|---|
-|Lenguaje|C++|
-|Compilador|GCC|
-|Estándar|C++20 o superior|
-|Sistema de construcción|CMake|
-|Pruebas automatizadas|Catch2|
-|Serialización y deserialización JSON|nlohmann/json|
-|Depuración|GDB|
-|Control de versiones|Git|
+| Componente                           | Herramienta                                     |
+| ------------------------------------ | ----------------------------------------------- |
+| Lenguaje                             | C++                                             |
+| Distribución Linux                   | Ubuntu / Fedora                                 |
+| Compilador                           | GCC                                             |
+| Estándar                             | C++20                                           |
+| Sistema de construcción              | CMake                                           |
+| Pruebas automatizadas                | Catch2                                          |
+| Serialización y deserialización JSON | nlohmann/json                                   |
+| Versiones fijadas                    | GCC 15, CMake 4, Catch2 3, nlohmann/json 3.12.0 |
+| Depuración                           | GDB                                             |
+| Control de versiones                 | Git                                             |
+
 La biblioteca nlohmann/json se utilizará para el manejo de mensajes JSON del protocolo de JobRunner.
 
 CMake será utilizado para centralizar:
-•Configuración de compilación.
-•Dependencias.
-•Opciones de compilación.
-•Advertencias.
-•Pruebas.
-•Generación del ejecutable.
 
-Se utilizarán opciones de compilación que permitan detectar errores durante el desarrollo. Como mínimo se evaluará el uso de:
+- Configuración de compilación.
+- Dependencias.
+- Opciones de compilación.
+- Advertencias.
+- Pruebas.
+- Generación del ejecutable.
+
+Se utilizarán opciones de compilación que permitan detectar errores durante el desarrollo. Se compilará, como mínimo, con las opciones:
 
 ```text
 -Wall
@@ -111,12 +115,20 @@ El proyecto deberá evitar advertencias injustificadas.
 
 Para la gestión de memoria y recursos se priorizará el uso de:
 
-•RAII.
-•Smart pointers cuando correspondan.
-•Contenedores de la STL.
-•Objetos con ownership claramente definido.
+- RAII.
+- Smart pointers cuando correspondan.
+- Contenedores de la STL.
+- Objetos con ownership claramente definido.
 
-La selección de C++ deberá validarse mediante un prototipo antes de considerarse una decisión definitiva.
+La decisión se validó con el prototipo del núcleo local descrito en la sección *Evidencia / prototipo*.
+
+### Razones de la decisión
+
+- Las operaciones centrales del proyecto (`fork`, `execvp`, `waitpid`, `epoll`, `signalfd`, `kill` sobre grupos de procesos) son APIs POSIX/Linux en C. C++ las usa directamente, sin bindings ni bloques `unsafe`, lo que reduce el código que cada integrante debe estudiar para poder defenderlo.
+- Los riesgos de memoria y de recursos se mitigan con RAII (por ejemplo, destructores que cierran descriptores), contenedores de la STL, advertencias estrictas del compilador y análisis estático.
+- nlohmann/json y Catch2 son bibliotecas maduras que se integran con CMake.
+- Rust ofrece mayores garantías de memoria, pero su curva de aprendizaje y el trabajo adicional para integrar las APIs POSIX no se justifican para el alcance y el plazo del proyecto.
+- El equipo ya ha trabajado con C++ en cursos previos y ninguno ha usado Rust en un proyecto de sistemas.
 
 ## Consecuencias
 
