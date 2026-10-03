@@ -20,13 +20,24 @@ enum class JobState {
     Canceled,
 };
 
+/**
+ * Convierte un estado de job a su representacion textual.
+ * @param state Estado del job.
+ * @return Estado serializado para salida/protocolo.
+ */
 const char* to_string(JobState state);
 
-// Returns true if transitioning from `from` to `to` is a legal move in
-// JobRunner's lifecycle (RF-06). Terminal states never move again, so
-// state regressions are structurally impossible (RNF-27).
+/**
+ * Valida si una transicion de estado es legal.
+ * @param from Estado de origen.
+ * @param to Estado de destino.
+ * @return true si la transicion es valida; false en caso contrario.
+ */
 bool is_valid_transition(JobState from, JobState to);
 
+/**
+ * Modelo de datos de un job.
+ */
 struct Job {
     JobId id{};
     std::string command;
@@ -46,9 +57,10 @@ struct Job {
     std::string stdout_data;
     std::string stderr_data;
 
-    // Throws std::logic_error if `to` is not reachable from the current
-    // state. Callers that need a non-throwing check should call
-    // is_valid_transition() first.
+    /**
+     * Cambia el estado del job validando la transicion.
+     * @param to Estado objetivo.
+     */
     void transition_to(JobState to);
 };
 

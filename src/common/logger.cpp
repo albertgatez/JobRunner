@@ -1,10 +1,12 @@
-#include "./logger.hpp"
-
 #include <chrono>
 #include <ctime>
 
+#include "./logger.hpp"
+
 namespace jobrunner {
 
+// Inicializa salida a archivo o stderr.
+// path: ruta de log; vacio para stderr.
 Logger::Logger(std::string path) {
     if (path.empty()) {
         file_ = stderr;
@@ -20,10 +22,15 @@ Logger::Logger(std::string path) {
     }
 }
 
+// Cierra archivo si el logger es propietario.
 Logger::~Logger() {
     if (owns_file_ && file_) std::fclose(file_);
 }
 
+// Escribe una linea de log con nivel y job opcional.
+// level: severidad del evento.
+// message: texto del evento.
+// job_id: id opcional para correlacion.
 void Logger::write(const char* level, const std::string& message,
                     std::optional<std::uint64_t> job_id) {
     auto now = std::chrono::system_clock::now();
@@ -40,10 +47,16 @@ void Logger::write(const char* level, const std::string& message,
     std::fflush(file_);
 }
 
+// Registra evento informativo.
+// message: descripcion del evento.
+// job_id: id opcional del job.
 void Logger::info(const std::string& message, std::optional<std::uint64_t> job_id) {
     write("INFO", message, job_id);
 }
 
+// Registra evento de error.
+// message: descripcion del error.
+// job_id: id opcional del job.
 void Logger::error(const std::string& message, std::optional<std::uint64_t> job_id) {
     write("ERROR", message, job_id);
 }

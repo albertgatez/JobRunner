@@ -1,7 +1,4 @@
-// server/main.cpp — Punto de entrada del servidor JobRunner
-// Este archivo ensambla todos los módulos del sistema y arranca el
-// event loop. Es el "compositor" de la arquitectura: conecta dominio,
-// I/O, red y procesos en un único hilo de control.
+// Es el "compositor" de la arquitectura: conecta dominio, I/O, red y procesos en un único hilo de control.
 
 #include <csignal>       // Necesario para SIGINT/SIGTERM y signalfd_siginfo
 #include <cstdlib>       // EXIT_SUCCESS

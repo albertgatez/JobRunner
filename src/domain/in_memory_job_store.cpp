@@ -2,6 +2,9 @@
 
 namespace jobrunner {
 
+// Crea y almacena un job nuevo en memoria.
+// command: comando a ejecutar.
+// args: argumentos del comando.
 JobId InMemoryJobStore::create(const std::string& command,
                                 const std::vector<std::string>& args) {
     JobId id = next_id_++;
@@ -15,12 +18,17 @@ JobId InMemoryJobStore::create(const std::string& command,
     return id;
 }
 
+// Busca un job por id.
+// id: identificador del job.
 std::optional<Job> InMemoryJobStore::get(JobId id) const {
     auto it = jobs_.find(id);
     if (it == jobs_.end()) return std::nullopt;
     return it->second;
 }
 
+// Actualiza un job existente con una funcion mutadora.
+// id: identificador del job.
+// mutator: logica de modificacion.
 bool InMemoryJobStore::update(JobId id, const std::function<void(Job&)>& mutator) {
     auto it = jobs_.find(id);
     if (it == jobs_.end()) return false;
@@ -28,6 +36,8 @@ bool InMemoryJobStore::update(JobId id, const std::function<void(Job&)>& mutator
     return true;
 }
 
+// Lista jobs con filtro opcional por estado.
+// state_filter: estado opcional para filtrar.
 std::vector<Job> InMemoryJobStore::list(std::optional<JobState> state_filter) const {
     std::vector<Job> result;
     for (const auto& [id, job] : jobs_) {

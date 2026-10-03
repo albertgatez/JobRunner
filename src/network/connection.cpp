@@ -7,6 +7,11 @@
 
 namespace jobrunner {
 
+// Construye una conexion cliente.
+// reactor: loop de eventos.
+// fd: socket del cliente.
+// on_request: callback para procesar payloads.
+// on_closed: callback al cerrar conexion.
 Connection::Connection(Reactor& reactor, int fd, RequestHandlerFn on_request,
                         ClosedCallback on_closed)
     : reactor_(reactor),
@@ -14,14 +19,17 @@ Connection::Connection(Reactor& reactor, int fd, RequestHandlerFn on_request,
       on_request_(std::move(on_request)),
       on_closed_(std::move(on_closed)) {}
 
+// Cierra el socket si sigue abierto.
 Connection::~Connection() {
     if (!closed_) ::close(fd_);
 }
 
+// Registra lectura de este socket en el reactor.
 void Connection::start() {
     reactor_.add_read(fd_, [this] { on_readable(); });
 }
 
+// Consume bytes de entrada y procesa frames completos.
 void Connection::on_readable() {
     std::array<char, 4096> buf{};
     while (true) {
@@ -29,7 +37,7 @@ void Connection::on_readable() {
         if (n > 0) {
             framer_.feed(buf.data(), static_cast<std::size_t>(n));
         } else if (n == 0) {
-            close_connection();  // client disconnected (RF-22)
+            close_connection();
             return;
         } else {
             if (errno == EAGAIN || errno == EWOULDBLOCK) break;
@@ -45,22 +53,19 @@ void Connection::on_readable() {
             queue_write(FrameCodec::encode_frame(response_json));
         }
     } catch (const std::exception&) {
-        // Malformed/oversized frame: reject this connection rather than
-        // letting one bad client wedge the reactor (RF-02, RNF-08, RNF-14).
         close_connection();
     }
 }
 
+// Encola respuesta de salida.
+// frame: bytes framed a enviar.
 void Connection::queue_write(std::string frame) {
     bool was_idle = out_offset_ >= out_buffer_.size();
     out_buffer_.append(frame);
-    if (was_idle) {
-        // Try a synchronous write first; only fall back to buffering + the
-        // reactor's write-readiness notification if the socket is full.
-        on_writable();
-    }
+    if (was_idle) on_writable();
 }
 
+// Intenta vaciar buffer de salida al socket.
 void Connection::on_writable() {
     while (out_offset_ < out_buffer_.size()) {
         ssize_t n = ::write(fd_, out_buffer_.data() + out_offset_, out_buffer_.size() - out_offset_);
@@ -83,13 +88,12 @@ void Connection::on_writable() {
     }
 }
 
+// Cierra y desmonta conexion del reactor.
 void Connection::close_connection() {
     if (closed_) return;
     closed_ = true;
     reactor_.remove(fd_);
     ::close(fd_);
-    // Last statement: may destroy `this` if the caller's callback drops the
-    // last shared_ptr to this Connection. Nothing below may touch members.
     if (on_closed_) on_closed_();
 }
 
