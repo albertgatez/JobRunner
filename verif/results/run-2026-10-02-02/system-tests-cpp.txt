@@ -1,0 +1,9 @@
+# ctest -R sistema (pruebas de sistema en C++ contra el servidor real)
+1/5 Test #29: TC-001 (sistema): envío, ids únicos y solicitudes inválidas ........   Passed    0.06 sec
+2/5 Test #30: TC-002 (sistema): límite de concurrencia y cola FIFO .................***Failed   10.08 sec
+3/5 Test #31: TC-003 (sistema): éxito y fallo con su código de salida .............   Passed    2.14 sec
+4/5 Test #32: TC-003 (sistema): cancelar termina el proceso y el estado no cambia ...   Passed    1.06 sec
+5/5 Test #33: TC-003 (sistema): los tiempos del Job son coherentes ..................   Passed    2.08 sec
+80% tests passed, 1 tests failed out of 5
+The following tests FAILED:
+	 30 - TC-002 (sistema): límite de concurrencia y cola FIFO (Failed)

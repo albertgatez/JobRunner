@@ -1,0 +1,15 @@
+2026-10-02T21:34:56 [INFO] JobRunner escuchando en /tmp/jobrunner-tc003.sock
+2026-10-02T21:34:56 [INFO] job=1 job recibido: sleep
+2026-10-02T21:34:56 [INFO] job=1 job en ejecucion (pid 2853)
+2026-10-02T21:34:58 [INFO] job=1 job finalizado (codigo 0)
+2026-10-02T21:34:59 [INFO] job=2 job recibido: false
+2026-10-02T21:34:59 [INFO] job=2 job en ejecucion (pid 2875)
+2026-10-02T21:34:59 [INFO] job=2 job finalizado (codigo 1)
+2026-10-02T21:35:00 [INFO] job=3 job recibido: sleep
+2026-10-02T21:35:00 [INFO] job=3 job en ejecucion (pid 2892)
+2026-10-02T21:35:00 [INFO] job=3 job finalizado (codigo -1)
+2026-10-02T21:35:03 [INFO] job=4 job recibido: sleep
+2026-10-02T21:35:03 [INFO] job=4 job en ejecucion (pid 2960)
+2026-10-02T21:35:03 [INFO] job=4 job finalizado (codigo -1)
+2026-10-02T21:35:03 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-10-02T21:35:03 [INFO] JobRunner detenido

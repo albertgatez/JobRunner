@@ -2,6 +2,10 @@
 
 #include <nlohmann/json.hpp>
 
+#include <chrono>
+#include <cstdio>
+#include <ctime>
+
 namespace jobrunner {
 
 using json = nlohmann::json;
@@ -18,6 +22,9 @@ json job_to_json(const Job& job) {
     j["state"] = to_string(job.state);
     if (job.exit_code) j["exit_code"] = *job.exit_code;
     if (job.exit_signal) j["exit_signal"] = *job.exit_signal;
+    j["received_at"] = to_iso8601(job.received_at);
+    if (job.started_at) j["started_at"] = to_iso8601(*job.started_at);
+    if (job.finished_at) j["finished_at"] = to_iso8601(*job.finished_at);
     j["stdout"] = job.stdout_data;
     j["stderr"] = job.stderr_data;
     return j;

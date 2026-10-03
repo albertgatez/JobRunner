@@ -1,0 +1,32 @@
+== TC-002 run-id=run-2026-10-02-01 commit=c006b2d límite esperado=3
+== Paso 1: iniciar servidor
+== Paso 2: enviar 5 Jobs (sleep 6..10, distintos para evitar la ventana de duplicados) y listar
+RUNNING=5 QUEUED=0
+  job 1 sleep 6 -> RUNNING
+  job 2 sleep 7 -> RUNNING
+  job 3 sleep 8 -> RUNNING
+  job 4 sleep 9 -> RUNNING
+  job 5 sleep 10 -> RUNNING
+[FAIL] hay exactamente 3 Jobs en RUNNING
+[FAIL] hay exactamente 2 Jobs en QUEUED
+[OK]   los Jobs 1, 2 y 3 (los primeros en llegar) son los que corren
+== Paso 3: procesos hijos simultáneos
+procesos sleep hijos del servidor: 5
+[FAIL] hay exactamente 3 procesos hijos
+== Paso 4: cancelar el Job 1 (RUNNING) -> el Job 4 debe pasar a RUNNING y el 5 seguir en QUEUED
+job1=CANCELED job4=RUNNING job5=RUNNING
+[OK]   el Job 1 queda CANCELED
+[OK]   el Job 4 (el más antiguo en cola) pasa a RUNNING
+[FAIL] el Job 5 sigue en QUEUED
+== Paso 5: muestreo cada 0.5 s hasta que terminen todos (máx. 40 s)
+máximo de procesos simultáneos observado: 4
+[FAIL] nunca hubo más de 3 procesos simultáneos
+[OK]   los 5 Jobs llegan a un estado terminal
+  job 1 sleep 6 -> CANCELED
+  job 2 sleep 7 -> SUCCEEDED
+  job 3 sleep 8 -> SUCCEEDED
+  job 4 sleep 9 -> SUCCEEDED
+  job 5 sleep 10 -> SUCCEEDED
+[OK]   el Job 5 llegó a ejecutarse (tiene started_at)
+== Comprobaciones ejecutadas: 10 (esperadas: 10) | fallos: 5
+RESULTADO TC-002: FAIL

@@ -1,0 +1,46 @@
+== TC-001 run-id=run-2026-10-02-01 commit=c006b2d
+== Paso 1: iniciar servidor
+[OK]   el socket existe
+== Paso 2: submit echo hola
+{
+  "job_id": 1,
+  "ok": true,
+  "was_duplicate": false
+}
+rc=0
+[OK]   ok=true
+[OK]   job_id numérico
+[OK]   rc del cliente = 0
+== Paso 3: submit echo adios (distinto, evita ventana de duplicados)
+{
+  "job_id": 2,
+  "ok": true,
+  "was_duplicate": false
+}
+[OK]   ok=true
+[OK]   job_id distinto al del paso 2
+== Paso 4: submit "" (comando vacío)
+{
+  "error": "el comando no puede estar vacio",
+  "ok": false
+}
+rc=1
+[OK]   ok=false con mensaje
+[OK]   mensaje de error presente
+[OK]   rc del cliente != 0
+[OK]   no se creó un Job nuevo (2 -> 2)
+== Paso 5: JSON mal formado y JSON sin 'op'
+malformado: {"error":"json invalido: [json.exception.parse_error.101] parse error at line 1, column 2: syntax error while parsing object key - invalid literal; last read: '{e'; expected string literal","ok":false}
+sin op:     {"error":"falta el campo 'op'","ok":false}
+[OK]   JSON mal formado -> ok=false con error
+[OK]   sin op -> ok=false con error
+== Paso 6: el servidor sigue vivo y responde
+{
+  "job_id": 3,
+  "ok": true,
+  "was_duplicate": false
+}
+[OK]   servidor vivo (kill -0)
+[OK]   submit posterior ok=true
+== Fallos: 0
+RESULTADO TC-001: PASS
