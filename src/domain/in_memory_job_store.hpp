@@ -5,7 +5,7 @@
 #include "./job_store.hpp"
 
 namespace jobrunner {
-
+// Hito 1 persistence backend: keeps everything in a std::map. Safe without locks because the whole service runs on a single reactor thread (see "docs/decisions/ADR-003 - Concurrencia.md"). Swappable for SqliteJobStore in Hito 2 without changing IJobStore's callers.
 /**
  * Implementacion en memoria de IJobStore.
  */
