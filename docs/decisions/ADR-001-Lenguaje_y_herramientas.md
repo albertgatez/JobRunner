@@ -94,6 +94,9 @@ La configuración inicial de herramientas será:
 
 La biblioteca nlohmann/json se utilizará para el manejo de mensajes JSON del protocolo de JobRunner.
 
+
+> Python 3 se usa únicamente como herramienta auxiliar en los scripts de verificación (`verif/scripts/`), para construir tramas crudas del protocolo en las pruebas de solicitudes inválidas. No forma parte del producto, que se implementa en C++20 con CMake y Catch2.
+
 CMake será utilizado para centralizar:
 
 - Configuración de compilación.

@@ -4,3 +4,5 @@ build*/
 # Windows / macOS
 **/.DS_Store
 **/desktop.ini
+
+**/.vscode/
