@@ -1,18 +1,20 @@
-#include <csignal>
-#include <cstdlib>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <unordered_map>
+// Es el "compositor" de la arquitectura: conecta dominio, I/O, red y procesos en un único hilo de control.
 
-#include "../common/logger.hpp"
-#include "../domain/in_memory_job_store.hpp"
-#include "../domain/job_manager.hpp"
-#include "../io/reactor.hpp"
-#include "../network/connection.hpp"
-#include "../network/unix_socket_listener.hpp"
-#include "../process/posix_process_launcher.hpp"
-#include "./request_handler.hpp"
+#include <csignal>       // Necesario para SIGINT/SIGTERM y signalfd_siginfo
+#include <cstdlib>       // EXIT_SUCCESS
+#include <iostream>      // std::cerr (por si falla el logger)
+#include <memory>        // std::shared_ptr
+#include <string>        // std::string
+#include <unordered_map> // Mapa fd→Connection
+
+#include "../common/logger.hpp"                     // Logger single-threaded
+#include "../domain/in_memory_job_store.hpp"        // Persistencia en memoria
+#include "../domain/job_manager.hpp"                // Orquestador de jobs
+#include "../io/reactor.hpp"                        // Event loop (epoll+signalfd)
+#include "../network/connection.hpp"                // Conexión por cliente
+#include "../network/unix_socket_listener.hpp"      // Acepta en socket Unix
+#include "../process/posix_process_launcher.hpp"    // fork()+execvp()
+#include "./request_handler.hpp"                    // Traduce JSON↔JobManager
 
 using namespace jobrunner;
 
