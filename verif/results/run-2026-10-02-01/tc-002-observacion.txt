@@ -1,0 +1,14 @@
+# Observación del estado actual (TC-002 NO ejecutable: no existe límite ni cola)
+estados:
+1 sleep ['10'] RUNNING
+2 sleep ['11'] RUNNING
+3 sleep ['12'] RUNNING
+4 sleep ['13'] RUNNING
+5 sleep ['14'] RUNNING
+procesos hijos simultáneos:
+  PID CMD
+  479 sleep 10
+  481 sleep 11
+  483 sleep 12
+  485 sleep 13
+  487 sleep 14

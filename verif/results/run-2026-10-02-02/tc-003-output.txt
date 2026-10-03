@@ -1,0 +1,46 @@
+== TC-003 run-id=run-2026-10-02-02 commit=a405e6b
+== Paso 1: pruebas unitarias [TC-003]
+Randomness seeded to: 3434739464
+===============================================================================
+All tests passed (53 assertions in 10 test cases)
+
+[OK]   pruebas unitarias [TC-003] en verde
+== Paso 2: submit sleep 2 -> RUNNING
+estado inmediato: RUNNING
+[OK]   RUNNING justo después del submit
+== Paso 3: tras 3 s -> SUCCEEDED, exit_code 0
+estado: SUCCEEDED exit_code: 0
+[OK]   SUCCEEDED
+[OK]   exit_code 0
+== Paso 4: submit false -> FAILED, exit_code 1
+estado: FAILED exit_code: 1
+[OK]   FAILED
+[OK]   exit_code 1
+== Paso 5: submit sleep 30 + cancel -> CANCELED y proceso muerto
+hijos antes del cancel:
+  PID STAT CMD
+ 2892 S    sleep 30
+{
+  "ok": true
+}
+estado: CANCELED
+hijos después del cancel:
+  PID STAT CMD
+[OK]   CANCELED
+[OK]   se identificó el proceso hijo de sleep 30 antes de cancelar
+[OK]   el proceso (pid 2892) ya no existe
+[OK]   sigue CANCELED tras terminar el proceso (RNF-27)
+== Paso 6: tiempos received_at/started_at/finished_at en status
+SUCCEEDED (job 1):
+  received_at=2026-10-03T03:34:56.200Z started_at=2026-10-03T03:34:56.200Z finished_at=2026-10-03T03:34:58.201Z
+[OK]   SUCCEEDED: los tres tiempos existen con formato ISO 8601
+[OK]   SUCCEEDED: received_at <= started_at <= finished_at
+CANCELED (job 3):
+  received_at=2026-10-03T03:35:00.423Z started_at=2026-10-03T03:35:00.423Z finished_at=2026-10-03T03:35:00.969Z
+[OK]   CANCELED: los tres tiempos existen con formato ISO 8601
+[OK]   CANCELED: received_at <= started_at <= finished_at
+duración medida del Job sleep 2: 2.0s
+[OK]   la duración de sleep 2 es coherente (1.9 - 3.0 s)
+[OK]   un Job en RUNNING tiene started_at y no tiene finished_at
+== Comprobaciones ejecutadas: 16 (esperadas: 16) | fallos: 0
+RESULTADO TC-003: PASS

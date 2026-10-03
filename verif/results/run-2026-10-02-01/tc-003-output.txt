@@ -1,0 +1,36 @@
+== TC-003 run-id=run-2026-10-02-01 commit=c006b2d
+== Paso 1: pruebas unitarias [TC-003]
+Randomness seeded to: 3197181187
+===============================================================================
+All tests passed (53 assertions in 10 test cases)
+
+[OK]   pruebas unitarias [TC-003] en verde
+== Paso 2: submit sleep 2 -> RUNNING
+estado inmediato: RUNNING
+[OK]   RUNNING justo después del submit
+== Paso 3: tras 3 s -> SUCCEEDED, exit_code 0
+estado: SUCCEEDED exit_code: 0
+[OK]   SUCCEEDED
+[OK]   exit_code 0
+== Paso 4: submit false -> FAILED, exit_code 1
+estado: FAILED exit_code: 1
+[OK]   FAILED
+[OK]   exit_code 1
+== Paso 5: submit sleep 30 + cancel -> CANCELED y proceso muerto
+hijos antes del cancel:
+  PID STAT CMD
+  438 S    sleep 30
+{
+  "ok": true
+}
+estado: CANCELED
+hijos después del cancel:
+  PID STAT CMD
+[OK]   CANCELED
+[OK]   el proceso (pid 438) ya no existe
+[OK]   sigue CANCELED tras terminar el proceso (RNF-27)
+== Paso 6: tiempos received_at/started_at/finished_at en status
+status incluye tiempos: False
+[BLOCKED] el servidor aún no expone los tiempos en status (subtarea pendiente)
+== Fallos: 0
+RESULTADO TC-003: BLOCKED (pasos 1-5 OK; paso 6 no ejecutable)

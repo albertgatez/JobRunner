@@ -1,0 +1,16 @@
+# ctest -R TC-002 (pruebas unitarias de TC-002; fallan hasta implementar el Issue 4)
+1/5 Test #24: TC-002: no se lanzan más procesos que el límite ...................***Failed    0.00 sec
+2/5 Test #25: TC-002: los Jobs excedentes esperan en orden de llegada .............***Failed    0.00 sec
+3/5 Test #26: TC-002: al terminar un Job se despacha el más antiguo de la cola ...***Failed    0.00 sec
+4/5 Test #27: TC-002: cancelar un Job en ejecución libera el cupo ................***Failed    0.00 sec
+5/5 Test #28: TC-002: cancelar un Job en cola no lanza ningún proceso ............***Failed    0.00 sec
+0% tests passed, 5 tests failed out of 5
+The following tests FAILED:
+	 24 - TC-002: no se lanzan más procesos que el límite (Failed)
+	 25 - TC-002: los Jobs excedentes esperan en orden de llegada (Failed)
+	 26 - TC-002: al terminar un Job se despacha el más antiguo de la cola (Failed)
+	 27 - TC-002: cancelar un Job en ejecución libera el cupo (Failed)
+	 28 - TC-002: cancelar un Job en cola no lanza ningún proceso (Failed)
+
+# ctest -E TC-002
+100% tests passed, 0 tests failed out of 23
