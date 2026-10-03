@@ -27,9 +27,6 @@ PosixProcessLauncher::PosixProcessLauncher(Reactor& reactor) : reactor_(reactor)
 pid_t PosixProcessLauncher::launch(const std::string& command,
                                     const std::vector<std::string>& args,
                                     OutputCallback on_output, ExitCallback on_exit) {
-    // O_CLOEXEC: los extremos de lectura de los pipes de un job no deben
-    // filtrarse a los hijos de OTROS jobs (dup2 limpia el flag en el fd
-    // que queda como stdout/stderr del hijo).
     int stdout_pipe[2];
     int stderr_pipe[2];
     if (pipe2(stdout_pipe, O_CLOEXEC) != 0) {
@@ -42,7 +39,6 @@ pid_t PosixProcessLauncher::launch(const std::string& command,
         throw std::runtime_error(std::string("pipe: ") + std::strerror(saved));
     }
 
-    // argv se arma ANTES del fork: en el hijo no conviene asignar memoria.
     std::vector<char*> argv;
     argv.push_back(const_cast<char*>(command.c_str()));
     for (const auto& a : args) argv.push_back(const_cast<char*>(a.c_str()));
@@ -61,11 +57,6 @@ pid_t PosixProcessLauncher::launch(const std::string& command,
     if (pid == 0) {
         setpgid(0, 0);
 
-        // CAUSA DEL BUG DE CANCELACION: Reactor bloquea SIGCHLD/SIGINT/SIGTERM
-        // (sigprocmask) para leerlos via signalfd. La mascara de senales se
-        // hereda en fork() y SOBREVIVE a execvp(), asi que sin esto el job
-        // arrancaba con SIGTERM bloqueado y kill(-pid, SIGTERM) quedaba
-        // pendiente para siempre. Hay que desbloquear todo antes del exec.
         sigset_t empty;
         sigemptyset(&empty);
         sigprocmask(SIG_SETMASK, &empty, nullptr);
@@ -81,9 +72,6 @@ pid_t PosixProcessLauncher::launch(const std::string& command,
         _exit(127);
     }
 
-    // Tambien desde el padre: evita la carrera en la que cancel() llega antes
-    // de que el hijo ejecute su propio setpgid() y kill(-pid) falla con ESRCH.
-    // Si el hijo ya hizo exec, setpgid falla con EACCES y es inofensivo.
     setpgid(pid, pid);
 
     close(stdout_pipe[1]);

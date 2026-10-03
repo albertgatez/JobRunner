@@ -1,6 +1,6 @@
-#include "./job.hpp"
-
 #include <stdexcept>
+
+#include "./job.hpp"
 
 namespace jobrunner {
 

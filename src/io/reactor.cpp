@@ -27,10 +27,6 @@ Reactor::Reactor() {
     sigaddset(&mask, SIGCHLD);
     sigaddset(&mask, SIGINT);
     sigaddset(&mask, SIGTERM);
-    // Block these signals so they queue up for signalfd instead of using a
-    // traditional async-signal-unsafe handler — this is what lets "a child
-    // exited" be treated as just another readable fd in the same loop as
-    // network sockets (RF-29, RNF-30).
     if (sigprocmask(SIG_BLOCK, &mask, nullptr) != 0) throw_errno("sigprocmask");
 
     signal_fd_ = signalfd(-1, &mask, SFD_CLOEXEC | SFD_NONBLOCK);
@@ -57,7 +53,7 @@ void Reactor::add_read(int fd, Callback on_readable) {
 
 void Reactor::set_write_interest(int fd, bool interested, Callback on_writable) {
     auto it = fds_.find(fd);
-    if (it == fds_.end()) return;  // fd may have just been removed by another callback
+    if (it == fds_.end()) return;
     it->second.on_writable = std::move(on_writable);
 
     std::uint32_t events = EPOLLIN;
@@ -93,8 +89,6 @@ void Reactor::handle_signalfd_readable() {
 
         auto it = signal_handlers_.find(static_cast<int>(info.ssi_signo));
         if (it != signal_handlers_.end()) {
-            // Copy out before invoking: a handler is free to register a
-            // different handler for the same signal.
             SignalCallback handler_copy = it->second;
             if (handler_copy) handler_copy(info);
         }
@@ -117,16 +111,12 @@ void Reactor::run() {
         for (int i = 0; i < n; ++i) {
             int fd = events[i].data.fd;
             auto it = fds_.find(fd);
-            if (it == fds_.end()) continue;  // removed by an earlier callback this batch
+            if (it == fds_.end()) continue;
 
             bool hup_or_err = events[i].events & (EPOLLHUP | EPOLLERR);
             bool writable = events[i].events & EPOLLOUT;
             bool readable = events[i].events & EPOLLIN;
 
-            // Copy the callbacks out before invoking them: a callback may
-            // remove `fd` (e.g. a connection closing itself), which erases
-            // this very map entry. Invoking a *copy* means that erase can't
-            // pull the rug out from under the call we're currently making.
             Callback readable_cb = it->second.on_readable;
             Callback writable_cb = it->second.on_writable;
 
@@ -135,14 +125,7 @@ void Reactor::run() {
                 continue;
             }
             if (writable && writable_cb) writable_cb();
-            if (readable && is_registered(fd) && readable_cb) {
-                // Re-check registration: the writable callback above may
-                // already have torn this fd down (e.g. a write error closed
-                // the connection), in which case calling the copied
-                // readable callback would operate on a now-destroyed
-                // object.
-                readable_cb();
-            }
+            if (readable && is_registered(fd) && readable_cb) readable_cb();
         }
     }
 }

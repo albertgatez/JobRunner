@@ -21,7 +21,7 @@ void set_nonblocking(int fd) {
 UnixSocketListener::UnixSocketListener(Reactor& reactor, std::string socket_path,
                                         AcceptCallback on_accept)
     : reactor_(reactor), socket_path_(std::move(socket_path)), on_accept_(std::move(on_accept)) {
-    ::unlink(socket_path_.c_str());  // remove a stale socket file, if any
+    ::unlink(socket_path_.c_str());
 
     listen_fd_ = ::socket(AF_UNIX, SOCK_STREAM, 0);
     if (listen_fd_ < 0) throw std::runtime_error(std::string("socket: ") + std::strerror(errno));
@@ -55,7 +55,7 @@ void UnixSocketListener::on_connection_ready() {
         if (client_fd < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) break;
             if (errno == EINTR) continue;
-            break;  // a transient accept error must not take the service down (RNF-08)
+            break;
         }
 
         std::string origin = "desconocido";

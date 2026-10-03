@@ -1,35 +1,21 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// client/main.cpp — Cliente CLI de JobRunner
-// ═══════════════════════════════════════════════════════════════════════════
-// Cliente de línea de comandos que se conecta al servidor JobRunner vía
-// socket Unix. Envía un solo request por invocación y muestra la respuesta
-// JSON formateada. A diferencia del servidor (event loop con epoll), el
-// cliente usa I/O bloqueante simple: solo tiene un request en vuelo.
-//
-// Uso:
-//   jobrunner-cli <socket> submit <comando> [args...]
-//   jobrunner-cli <socket> status <id>
-//   jobrunner-cli <socket> list [estado]
-//   jobrunner-cli <socket> cancel <id>
+// Cliente CLI de JobRunner.
 
-#include <sys/socket.h>   // socket(), connect(), AF_UNIX
-#include <sys/un.h>       // sockaddr_un
-#include <unistd.h>       // read(), write(), close()
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <string>
 
-#include <cstdlib>        // EXIT_SUCCESS, EXIT_FAILURE
-#include <cstring>        // strncpy, strtoull
-#include <iostream>       // std::cout, std::cerr
-#include <nlohmann/json.hpp>// Librería JSON: parse, serialize, manipulación
-#include <string>         // std::string
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
-#include "../protocol/frame_codec.hpp"  // FrameCodec: framing [4 bytes len][payload]
+#include <nlohmann/json.hpp>
+
+#include "../protocol/frame_codec.hpp"
 
 using json = nlohmann::json;
 using jobrunner::FrameCodec;
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Namespace anónimo: funciones auxiliares internas del cliente
-// ═══════════════════════════════════════════════════════════════════════════
 namespace {
 
 // ═══════════════════════════════════════════════════════════════════════════

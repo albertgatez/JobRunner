@@ -1,7 +1,7 @@
-#include "./logger.hpp"
-
 #include <chrono>
 #include <ctime>
+
+#include "./logger.hpp"
 
 namespace jobrunner {
 

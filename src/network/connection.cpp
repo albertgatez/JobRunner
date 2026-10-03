@@ -29,7 +29,7 @@ void Connection::on_readable() {
         if (n > 0) {
             framer_.feed(buf.data(), static_cast<std::size_t>(n));
         } else if (n == 0) {
-            close_connection();  // client disconnected (RF-22)
+            close_connection();
             return;
         } else {
             if (errno == EAGAIN || errno == EWOULDBLOCK) break;
@@ -45,8 +45,6 @@ void Connection::on_readable() {
             queue_write(FrameCodec::encode_frame(response_json));
         }
     } catch (const std::exception&) {
-        // Malformed/oversized frame: reject this connection rather than
-        // letting one bad client wedge the reactor (RF-02, RNF-08, RNF-14).
         close_connection();
     }
 }
@@ -54,11 +52,7 @@ void Connection::on_readable() {
 void Connection::queue_write(std::string frame) {
     bool was_idle = out_offset_ >= out_buffer_.size();
     out_buffer_.append(frame);
-    if (was_idle) {
-        // Try a synchronous write first; only fall back to buffering + the
-        // reactor's write-readiness notification if the socket is full.
-        on_writable();
-    }
+    if (was_idle) on_writable();
 }
 
 void Connection::on_writable() {
@@ -88,8 +82,6 @@ void Connection::close_connection() {
     closed_ = true;
     reactor_.remove(fd_);
     ::close(fd_);
-    // Last statement: may destroy `this` if the caller's callback drops the
-    // last shared_ptr to this Connection. Nothing below may touch members.
     if (on_closed_) on_closed_();
 }
 
