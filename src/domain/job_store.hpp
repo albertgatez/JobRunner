@@ -8,6 +8,8 @@
 
 namespace jobrunner {
 
+// Abstraction over how job metadata is persisted. JobManager depends only on this interface (DIP), so the concrete backend can change — in-memory today, SQLite from Hito 2 — without touching orchestration logic (OCP).
+
 /**
  * Interfaz de persistencia para metadatos de jobs.
  */
