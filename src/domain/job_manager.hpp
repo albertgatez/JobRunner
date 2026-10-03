@@ -22,7 +22,7 @@ struct SubmitResult {
     bool was_duplicate{false};
     std::string error_message;
 };
-
+// Orchestrates job submission and lifecycle. This is the only class that knows JobRunner's business rules (validation, duplicate detection, cancellation) — it depends on IJobStore and IProcessLauncher as abstractions (DIP), so either can be swapped without touching this class (OCP), and it never touches JSON or sockets directly (SRP).
 /**
  * Orquesta envio, ejecucion y cancelacion de jobs.
  */
@@ -35,7 +35,7 @@ class JobManager {
       * @param logger Bitacora operacional.
       */
     JobManager(IJobStore& store, IProcessLauncher& launcher, Logger& logger);
-
+    // `client_origin` identifies who sent the request (e.g. "pid:1234" for a Unix-socket peer) and scopes the duplicate-request window (RF-27) so two different clients submitting the same command are never merged into one job.
      /**
       * Registra una solicitud de ejecucion.
       * @param command Comando a ejecutar.
