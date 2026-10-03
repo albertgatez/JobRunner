@@ -7,8 +7,12 @@
 
 namespace jobrunner {
 
+// Agrega bytes crudos al buffer interno.
+// data: puntero al bloque de entrada.
+// len: cantidad de bytes a anexar.
 void FrameCodec::feed(const char* data, std::size_t len) { buffer_.append(data, len); }
 
+// Intenta extraer un frame completo desde el buffer.
 std::optional<std::string> FrameCodec::try_extract_frame() {
     if (buffer_.size() < sizeof(std::uint32_t)) return std::nullopt;
 
@@ -27,6 +31,8 @@ std::optional<std::string> FrameCodec::try_extract_frame() {
     return payload;
 }
 
+// Serializa payload a formato framed.
+// payload: contenido JSON serializado.
 std::string FrameCodec::encode_frame(const std::string& payload) {
     std::uint32_t len = htonl(static_cast<std::uint32_t>(payload.size()));
     std::string out;

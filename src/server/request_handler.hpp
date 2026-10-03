@@ -6,15 +6,23 @@
 
 namespace jobrunner {
 
-// Translates JSON request/response payloads to and from JobManager calls.
-// This is the only place that knows the wire schema — JobManager itself
-// never sees JSON (see docs/technical-guide/arquitectura.md).
+/**
+ * Traduce solicitudes/respuestas JSON al dominio.
+ */
 class RequestHandler {
    public:
+     /**
+      * Construye el traductor JSON <-> dominio.
+      * @param manager Orquestador de jobs del dominio.
+      */
     explicit RequestHandler(JobManager& manager);
 
-    // Never throws: malformed input is reported back as a JSON error
-    // response rather than propagated (RF-02, RNF-08).
+     /**
+      * Procesa una solicitud JSON y devuelve respuesta JSON.
+      * @param request_json Payload recibido por red.
+      * @param client_origin Identidad del cliente (ej. pid:1234).
+      * @return Respuesta JSON serializada.
+      */
     std::string handle(const std::string& request_json, const std::string& client_origin);
 
    private:

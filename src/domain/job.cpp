@@ -4,6 +4,8 @@
 
 namespace jobrunner {
 
+// Convierte estado enum a texto de protocolo.
+// state: estado interno del job.
 const char* to_string(JobState state) {
     switch (state) {
         case JobState::Queued:
@@ -20,6 +22,9 @@ const char* to_string(JobState state) {
     return "UNKNOWN";
 }
 
+// Valida si una transicion de estado es legal.
+// from: estado actual.
+// to: estado objetivo.
 bool is_valid_transition(JobState from, JobState to) {
     switch (from) {
         case JobState::Queued:
@@ -35,6 +40,8 @@ bool is_valid_transition(JobState from, JobState to) {
     return false;
 }
 
+// Aplica una transicion validada al job.
+// to: siguiente estado requerido.
 void Job::transition_to(JobState to) {
     if (!is_valid_transition(state, to)) {
         throw std::logic_error(std::string("invalid job state transition: ") +

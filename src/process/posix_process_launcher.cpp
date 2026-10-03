@@ -13,17 +13,26 @@
 namespace jobrunner {
 
 namespace {
+// Marca un fd como no bloqueante.
+// fd: descriptor a configurar.
 void set_nonblocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 }  // namespace
 
+// Registra manejo de SIGCHLD para recoleccion de hijos.
+// reactor: loop de eventos central.
 PosixProcessLauncher::PosixProcessLauncher(Reactor& reactor) : reactor_(reactor) {
     reactor_.on_signal(SIGCHLD,
                         [this](const struct signalfd_siginfo&) { reap_exited_children(); });
 }
 
+// Lanza un proceso hijo con captura de stdout/stderr.
+// command: ejecutable/comando.
+// args: argumentos del comando.
+// on_output: callback por chunks de salida.
+// on_exit: callback al finalizar.
 pid_t PosixProcessLauncher::launch(const std::string& command,
                                     const std::vector<std::string>& args,
                                     OutputCallback on_output, ExitCallback on_exit) {
@@ -94,6 +103,10 @@ pid_t PosixProcessLauncher::launch(const std::string& command,
     return pid;
 }
 
+// Drena datos de un pipe de salida del hijo.
+// pid: proceso propietario.
+// fd: descriptor del pipe.
+// is_stderr: true si corresponde a stderr.
 void PosixProcessLauncher::drain_pipe(pid_t pid, int fd, bool is_stderr) {
     auto it = children_.find(pid);
     if (it == children_.end()) return;
@@ -116,6 +129,7 @@ void PosixProcessLauncher::drain_pipe(pid_t pid, int fd, bool is_stderr) {
     }
 }
 
+// Recolecta hijos terminados y dispara callbacks de salida.
 void PosixProcessLauncher::reap_exited_children() {
     int status = 0;
     pid_t pid;
@@ -141,6 +155,9 @@ void PosixProcessLauncher::reap_exited_children() {
     }
 }
 
+// Envia senal al grupo de proceso del job.
+// pid: proceso lider del grupo.
+// signal: numero de senal POSIX.
 void PosixProcessLauncher::send_signal(pid_t pid, int signal) {
     ::kill(-pid, signal);
 }

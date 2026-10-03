@@ -9,28 +9,42 @@
 
 namespace jobrunner {
 
-// Invoked exactly once when the child process exits, from within the
-// reactor's event loop (never from a signal handler directly).
+/**
+ * Callback ejecutado cuando un proceso hijo termina.
+ */
 using ExitCallback = std::function<void(pid_t pid, int exit_code, int term_signal)>;
 
-// Invoked whenever new bytes are available on the child's stdout/stderr.
+/**
+ * Callback ejecutado cuando llega salida de stdout/stderr.
+ */
 using OutputCallback = std::function<void(pid_t pid, bool is_stderr, std::string_view data)>;
 
-// Abstraction over how a job is turned into an OS process. JobManager
-// depends on this interface (DIP), so tests can substitute a fake that
-// never actually forks (see tests/fakes/fake_process_launcher.hpp).
+/**
+ * Interfaz para lanzar y senializar procesos de jobs.
+ */
 class IProcessLauncher {
    public:
+     /**
+      * Destructor virtual para uso polimorfico.
+      */
     virtual ~IProcessLauncher() = default;
 
-    // Forks and execs `command` with `args`. stdout/stderr are captured via
-    // pipes and delivered through `on_output` without being mixed together
-    // (RF-11); `on_exit` fires exactly once when the process terminates.
-    // Returns the child pid.
+     /**
+      * Lanza un proceso hijo.
+      * @param command Ejecutable/comando a correr.
+      * @param args Argumentos del comando.
+      * @param on_output Callback de salida stdout/stderr.
+      * @param on_exit Callback al terminar el proceso.
+      * @return pid del proceso hijo.
+      */
     virtual pid_t launch(const std::string& command, const std::vector<std::string>& args,
                           OutputCallback on_output, ExitCallback on_exit) = 0;
 
-    // Sends `signal` (e.g. SIGTERM, SIGKILL) to the process group of `pid`.
+     /**
+      * Envia una senal al proceso/grupo objetivo.
+      * @param pid Identificador del proceso objetivo.
+      * @param signal Numero de senal POSIX.
+      */
     virtual void send_signal(pid_t pid, int signal) = 0;
 };
 

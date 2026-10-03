@@ -8,6 +8,8 @@ using json = nlohmann::json;
 
 namespace {
 
+// Convierte un Job de dominio a JSON de respuesta.
+// job: entidad de dominio a serializar.
 json job_to_json(const Job& job) {
     json j;
     j["id"] = job.id;
@@ -21,6 +23,8 @@ json job_to_json(const Job& job) {
     return j;
 }
 
+// Construye respuesta de error estandar.
+// message: descripcion del error.
 std::string error_response(const std::string& message) {
     json j;
     j["ok"] = false;
@@ -28,6 +32,8 @@ std::string error_response(const std::string& message) {
     return j.dump();
 }
 
+// Convierte estado textual a enum interno.
+// s: estado textual del request.
 std::optional<JobState> parse_state(const std::string& s) {
     if (s == "QUEUED") return JobState::Queued;
     if (s == "RUNNING") return JobState::Running;
@@ -39,8 +45,13 @@ std::optional<JobState> parse_state(const std::string& s) {
 
 }  // namespace
 
+// Crea handler de protocolo.
+// manager: orquestador del dominio.
 RequestHandler::RequestHandler(JobManager& manager) : manager_(manager) {}
 
+// Procesa request JSON y devuelve respuesta JSON.
+// request_json: payload de entrada.
+// client_origin: identidad del cliente para dedup.
 std::string RequestHandler::handle(const std::string& request_json,
                                     const std::string& client_origin) {
     json request;

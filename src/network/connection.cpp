@@ -7,6 +7,11 @@
 
 namespace jobrunner {
 
+// Construye una conexion cliente.
+// reactor: loop de eventos.
+// fd: socket del cliente.
+// on_request: callback para procesar payloads.
+// on_closed: callback al cerrar conexion.
 Connection::Connection(Reactor& reactor, int fd, RequestHandlerFn on_request,
                         ClosedCallback on_closed)
     : reactor_(reactor),
@@ -14,14 +19,17 @@ Connection::Connection(Reactor& reactor, int fd, RequestHandlerFn on_request,
       on_request_(std::move(on_request)),
       on_closed_(std::move(on_closed)) {}
 
+// Cierra el socket si sigue abierto.
 Connection::~Connection() {
     if (!closed_) ::close(fd_);
 }
 
+// Registra lectura de este socket en el reactor.
 void Connection::start() {
     reactor_.add_read(fd_, [this] { on_readable(); });
 }
 
+// Consume bytes de entrada y procesa frames completos.
 void Connection::on_readable() {
     std::array<char, 4096> buf{};
     while (true) {
@@ -49,12 +57,15 @@ void Connection::on_readable() {
     }
 }
 
+// Encola respuesta de salida.
+// frame: bytes framed a enviar.
 void Connection::queue_write(std::string frame) {
     bool was_idle = out_offset_ >= out_buffer_.size();
     out_buffer_.append(frame);
     if (was_idle) on_writable();
 }
 
+// Intenta vaciar buffer de salida al socket.
 void Connection::on_writable() {
     while (out_offset_ < out_buffer_.size()) {
         ssize_t n = ::write(fd_, out_buffer_.data() + out_offset_, out_buffer_.size() - out_offset_);
@@ -77,6 +88,7 @@ void Connection::on_writable() {
     }
 }
 
+// Cierra y desmonta conexion del reactor.
 void Connection::close_connection() {
     if (closed_) return;
     closed_ = true;
