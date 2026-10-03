@@ -1,17 +1,17 @@
 // Cliente CLI de JobRunner.
 
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
+#include <cstdlib>					// EXIT_SUCCESS, EXIT_FAILURE
+#include <cstring>					// strncpy, strtoull
+#include <iostream>        
 #include <string>
 
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
+#include <sys/socket.h>    	// socket(), connect(), AF_UNIX
+#include <sys/un.h>       	// sockaddr_un
+#include <unistd.h>        	// read(), write(), close()
 
 #include <nlohmann/json.hpp>
 
-#include "../protocol/frame_codec.hpp"
+#include "../protocol/frame_codec.hpp"	// FrameCodec: framing [4 bytes len][payload]
 
 using json = nlohmann::json;
 using jobrunner::FrameCodec;
