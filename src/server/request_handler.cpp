@@ -12,6 +12,21 @@ using json = nlohmann::json;
 
 namespace {
 
+// Formatea un instante como ISO 8601 en UTC con milisegundos
+// (p. ej. "2026-10-02T18:30:05.123Z"). El formato es ordenable como texto (RF-07).
+std::string to_iso8601(TimePoint tp) {
+    using namespace std::chrono;
+    const auto ms = duration_cast<milliseconds>(tp.time_since_epoch()) % 1000;
+    const std::time_t secs = Clock::to_time_t(tp);
+    std::tm tm{};
+    gmtime_r(&secs, &tm);
+    char buf[32];
+    std::strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tm);
+    char out[48];
+    std::snprintf(out, sizeof(out), "%s.%03dZ", buf, static_cast<int>(ms.count()));
+    return out;
+}
+ 
 // Convierte un Job de dominio a JSON de respuesta.
 // job: entidad de dominio a serializar.
 json job_to_json(const Job& job) {
