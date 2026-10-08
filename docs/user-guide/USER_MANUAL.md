@@ -81,26 +81,31 @@ Open two terminal windows.
 
 The server prints log messages to stderr and runs in the foreground. Press `Ctrl+C` to shut it down gracefully.
 
-**Terminal 2 — Submit a job:**
+**Terminal 2 — Run client test commands:**
 
 ```bash
-./jobrunner-cli <socket> submit echo "Hello from JobRunner"
-```
+./jobrunner-cli /tmp/jobrunner.sock submit echo "Hola desde JobRunner"
+./jobrunner-cli /tmp/jobrunner.sock status 1
 
-You should see a JSON response like:
+./jobrunner-cli /tmp/jobrunner.sock list RUNNING
 
-```json
-{"ok":true,"job":{"id":1,"state":"RUNNING","command":"echo","args":["Hello from JobRunner"]}}
-```
+./jobrunner-cli /tmp/jobrunner.sock list SUCCEEDED
 
-Now check the result:
+./jobrunner-cli /tmp/jobrunner.sock cancel 1
 
-```bash
-./jobrunner-cli <socket> status 1
-```
+./jobrunner-cli /tmp/jobrunner.sock submit ls -la /tmp
 
-```json
-{"ok":true,"job":{"id":1,"state":"SUCCEEDED","command":"echo","args":["Hello from JobRunner"],"exit_code":0,"stdout":"Hello from JobRunner\n","stderr":""}}
+./jobrunner-cli /tmp/jobrunner.sock submit sleep 5
+
+./jobrunner-cli /tmp/jobrunner.sock submit python3 -c "print('hello')"
+
+./jobrunner-cli /tmp/jobrunner.sock submit echo "Hello from JobRunner"
+
+./jobrunner-cli /tmp/jobrunner.sock status 1
+
+./jobrunner-cli /tmp/jobrunner.sock list
+
+./jobrunner-cli /tmp/jobrunner.sock cancel 1
 ```
 
 ---
