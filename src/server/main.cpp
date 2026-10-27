@@ -22,6 +22,11 @@ int main(int argc, char** argv) {
     std::string socket_path = "/tmp/jobrunner.sock";
     if (argc > 1) socket_path = argv[1];
 
+    // Límite de jobs simultáneos (RF-05). Argumento opcional;
+    // por defecto 3. Ejemplo: ./jobrunner-server /tmp/jobrunner.sock 3
+    std::size_t max_concurrent_jobs = 3;
+    if (argc > 2) max_concurrent_jobs = std::stoul(argv[2]);
+
     // Instancia el logger del sistema. Es single-threaded por diseño:
     // todo el servidor corre en un solo hilo (el Reactor), así que no
     // necesita mutexs. Escribe eventos operacionales (no salida de jobs)
@@ -62,7 +67,7 @@ int main(int argc, char** argv) {
     // (ventana de 3 segundos por cliente), transiciones de estado,
     // captura de salida y cancelación. Es el único punto que conoce
     // el ciclo de vida completo de un job.
-    JobManager manager(store, launcher, logger);
+    JobManager manager(store, launcher, logger, max_concurrent_jobs);
 
     // Capa de traducción JSON ↔ JobManager. Recibe el manager. 
     // Expone handle(json, origin) que interpreta las

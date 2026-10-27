@@ -1,5 +1,5 @@
 #include "./job_manager.hpp"
-
+#include <algorithm>
 #include <csignal>
 
 namespace jobrunner {
@@ -19,10 +19,17 @@ std::size_t JobManager::DedupKeyHash::operator()(const DedupKey& k) const {
 // store: backend de almacenamiento.
 // launcher: lanzador de procesos.
 // logger: bitacora operacional.
-JobManager::JobManager(IJobStore& store, IProcessLauncher& launcher, Logger& logger)
-    : store_(store), launcher_(launcher), logger_(logger) {}
+// max_concurrent_jobs: limite de jobs ejecutandose a la vez.
+// max_queue_size: capacidad maxima de la cola antes de rechazar.
+JobManager::JobManager(IJobStore& store, IProcessLauncher& launcher, Logger& logger,
+                       std::size_t max_concurrent_jobs, std::size_t max_queue_size)
+    : store_(store),
+      launcher_(launcher),
+      logger_(logger),
+      max_concurrent_jobs_(max_concurrent_jobs),
+      max_queue_size_(max_queue_size) {}
 
-// Crea o deduplica un job y dispara ejecucion.
+// Crea, deduplica, encola o rechaza un job segun el cupo disponible.
 // command: comando solicitado.
 // args: argumentos del comando.
 // client_origin: identificador del cliente solicitante.
@@ -30,7 +37,7 @@ SubmitResult JobManager::submit(const std::string& command,
                                  const std::vector<std::string>& args,
                                  const std::string& client_origin) {
     SubmitResult result;
-
+    
     if (command.empty()) {
         result.accepted = false;
         result.error_message = "el comando no puede estar vacio";
@@ -48,7 +55,15 @@ SubmitResult JobManager::submit(const std::string& command,
         logger_.info("solicitud duplicada detectada, reutilizando job", result.job_id);
         return result;
     }
-
+    // RF-25 / RNF-29: si no hay cupo y la cola ya esta llena, se rechaza
+    // antes de crear el job. No queda registro ni id para la solicitud.
+    if (running_count_ >= max_concurrent_jobs_ && queue_.size() >= max_queue_size_) {
+        result.accepted = false;
+        result.error_message = "cola llena (" + std::to_string(max_queue_size_) +
+                                " jobs en espera), intenta mas tarde";
+        logger_.info("solicitud rechazada: cola llena");
+        return result;
+    }
     JobId id = store_.create(command, args);
     recent_submissions_[key] = {id, std::chrono::steady_clock::now()};
 
@@ -56,11 +71,16 @@ SubmitResult JobManager::submit(const std::string& command,
 
     result.accepted = true;
     result.job_id = id;
-    dispatch(id);
+    if (running_count_ < max_concurrent_jobs_) {
+        dispatch(id);
+    } else {
+        queue_.push_back(id);
+        logger_.info("job encolado, en espera de cupo", id);
+    }
     return result;
 }
 
-// Inicia ejecucion de un job queued.
+// Lanza efectivamente un job en estado Queued y ocupa un cupo.
 // id: identificador del job.
 void JobManager::dispatch(JobId id) {
     auto job = store_.get(id);
@@ -80,7 +100,17 @@ void JobManager::dispatch(JobId id) {
         j.started_at = Clock::now();
         j.pid = pid;
     });
+    ++running_count_;
     logger_.info("job en ejecucion (pid " + std::to_string(pid) + ")", id);
+}
+
+// Si hay cupo libre y jobs en cola, despacha el mas antiguo (FIFO).
+void JobManager::dispatch_next_queued() {
+    while (running_count_ < max_concurrent_jobs_ && !queue_.empty()) {
+        JobId next_id = queue_.front();
+        queue_.pop_front();
+        dispatch(next_id);
+    }
 }
 
 // Acumula salida stdout/stderr del proceso.
@@ -97,7 +127,7 @@ void JobManager::on_child_output(JobId id, bool is_stderr, std::string_view data
     });
 }
 
-// Finaliza estado del job al terminar el hijo.
+// Finaliza estado del job, libera su cupo y despacha el siguiente en cola.
 // id: identificador del job.
 // exit_code: codigo de retorno.
 // term_signal: senal de terminacion, 0 si no aplica.
@@ -112,9 +142,13 @@ void JobManager::on_child_exit(JobId id, int exit_code, int term_signal) {
         if (term_signal != 0) j.exit_signal = term_signal;
     });
     logger_.info("job finalizado (codigo " + std::to_string(exit_code) + ")", id);
+    // El cupo se libera hasta que el proceso realmente termino (ADR-003),
+    // sin importar si el job ya estaba CANCELED mientras corria.
+    if (running_count_ > 0) --running_count_;
+    dispatch_next_queued();
 }
 
-// Solicita cancelacion de un job.
+// Solicita cancelacion de un job. Si esta en QUEUED, lo retira de la cola.
 // id: identificador del job.
 bool JobManager::cancel(JobId id) {
     auto job = store_.get(id);
@@ -126,6 +160,7 @@ bool JobManager::cancel(JobId id) {
     }
 
     if (job->state == JobState::Queued) {
+        queue_.erase(std::remove(queue_.begin(), queue_.end(), id), queue_.end());
         store_.update(id, [](Job& j) {
             j.transition_to(JobState::Canceled);
             j.finished_at = Clock::now();
