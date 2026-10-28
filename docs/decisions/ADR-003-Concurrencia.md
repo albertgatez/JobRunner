@@ -259,14 +259,15 @@ En términos de las alternativas anteriores, se elige la **Alternativa 5** (proc
 ### Estado de implementación
 
 | Elemento                                                                                           | Estado                      |
-| -------------------------------------------------------------------------------------------------- | --------------------------- |
+| --- | --- |
 | Event loop `epoll`, `signalfd`, pipes y sockets no bloqueantes                                     | Implementado (Hito 1)       |
 | Un proceso por Job con grupo de procesos propio y captura separada de stdout/stderr                | Implementado (Hito 1)       |
 | Restablecimiento de la máscara de señales en el hijo antes de `exec`                               | Implementado (Hito 1)       |
 | Detección de terminación de hijos y registro del código de salida                                  | Implementado (Hito 1)       |
-| Límite configurable `max_concurrent_jobs` y cola con capacidad máxima                              | Pendiente (Hito 2)          |
-| Escalamiento de cancelación (`SIGTERM` → `SIGKILL`)                                                | Pendiente (Hito 2, ADR futuro de cancelación) |
-| Política de saturación y backpressure                                                              | Pendiente (ADR futuro de saturación)         |
+| Límite configurable `max_concurrent_jobs` y cola con capacidad máxima                              | Implementado (Hito 2)   |
+| Rechazo explícito por saturación de la cola                                                        | Implementado (Hito 2)   |
+| Escalamiento de cancelación (`SIGTERM` → `SIGKILL`)                                                | Pendiente (ADR futuro de cancelación) |
+| Política de saturación y backpressure                                                              | Implementado (Hito 2)   |
 | Manejo de error al crear el proceso (job marcado `FAILED` con diagnóstico, sin quedar en `QUEUED`) | Pendiente (Hito 2)          |
 | Cierre controlado sin procesos huérfanos (terminar y recolectar los Jobs en ejecución al apagar)   | Pendiente (Hito 2)          |
 
@@ -392,33 +393,46 @@ No se introducirán estos mecanismos únicamente por anticipación si la impleme
 
 ### Límite de concurrencia
 
-El número máximo de Jobs simultáneos será configurable.
+El número máximo de Jobs simultáneos (`max_concurrent_jobs`) se recibe como
+parámetro de arranque del servidor (ver `src/server/main.cpp`), con un valor
+por defecto de 3 si no se especifica.
 
-El Job Manager será el responsable de garantizar:
+El Job Manager garantiza:
 
 ```text
 running_jobs <= max_concurrent_jobs
 ```
 
-El contador de cupos se calcula a partir de **procesos realmente vivos**, no a partir del estado del Job. Un Job cancelado pasa a `CANCELED` de inmediato, pero su proceso sigue existiendo hasta recibir la señal y ser recolectado con `waitpid`. Por ello, el cupo se libera únicamente al procesar la terminación del proceso (`on_child_exit`), incluso si el Job ya estaba en `CANCELED`, y es en ese momento cuando se despacha el siguiente Job de la cola. Cancelar un Job en `QUEUED` no ocupa cupo: solo se retira de la cola.
+mediante un contador interno (`running_count_`) que se incrementa cuando
+`dispatch()` lanza un proceso con éxito, y se decrementa en
+`on_child_exit()`, cuando el proceso del Job efectivamente termina y es
+recolectado (`waitpid`), no cuando el Job cambia de estado. Un Job
+`CANCELED` cuyo proceso sigue vivo sigue ocupando cupo hasta que
+`on_child_exit()` lo libere.
 
-La condición deberá mantenerse incluso cuando:
-
-- lleguen varias solicitudes simultáneamente;
-- varios Jobs terminen casi al mismo tiempo;
-- se soliciten cancelaciones concurrentes;
-- existan múltiples clientes;
-- se produzcan errores durante la creación del proceso.
 
 ### Cola
 
-La cola será utilizada para mantener Jobs aceptados que todavía no cuentan con capacidad de ejecución.
+Los Jobs que llegan sin cupo disponible se almacenan en una cola FIFO en
+memoria (`std::deque<JobId>`), dentro de `JobManager`, como se decidió en
+el submódulo lógico de ADR-002.
 
-Cuando la capacidad de Jobs activos esté ocupada, un nuevo Job podrá permanecer en `QUEUED` hasta que exista capacidad disponible.
+La cola tiene una capacidad máxima (`max_queue_size`, por defecto 10). Por
+ahora solo es configurable desde el constructor de `JobManager`: el servidor
+no la recibe como argumento de arranque y siempre usa el valor por defecto.
+Cuando se alcanza esa capacidad, una solicitud nueva es
+**rechazada explícitamente** antes de crear el Job: `submit()` devuelve
+`accepted = false` con un mensaje de error, y no se genera ningún registro
+en el almacén ni se le asigna un id. Esto cubre RF-25 y RNF-29 (backpressure
+ante saturación). Lo verifica la prueba unitaria "Cola llena: se rechaza la
+solicitud sin crear el Job" (`tests/test_concurrency_queue.cpp`).
 
-La capacidad máxima de la cola y la política de comportamiento cuando esta se encuentre llena serán definidas en un ADR posterior (saturación, aún no redactado).
+Al liberarse un cupo (`on_child_exit`), si la cola no está vacía, se
+despacha el Job más antiguo (`queue_.front()`), en orden de llegada.
 
-No se establecerá en este ADR una política específica de rechazo o backpressure.
+Cancelar un Job en `QUEUED` lo retira de la cola de inmediato y lo marca
+`CANCELED` sin que llegue a ocupar cupo ni a lanzar un proceso.
+
 
 ### Cancelación
 

@@ -1,0 +1,15 @@
+Test project /home/santi/PROYECTO/JobRunner/build
+    Start 24: TC-002: no se lanzan más procesos que el límite
+1/5 Test #24: TC-002: no se lanzan más procesos que el límite ...................   Passed    0.00 sec
+    Start 25: TC-002: los Jobs excedentes esperan en orden de llegada
+2/5 Test #25: TC-002: los Jobs excedentes esperan en orden de llegada .............   Passed    0.00 sec
+    Start 26: TC-002: al terminar un Job se despacha el más antiguo de la cola
+3/5 Test #26: TC-002: al terminar un Job se despacha el más antiguo de la cola ...   Passed    0.00 sec
+    Start 27: TC-002: cancelar un Job en ejecución libera el cupo
+4/5 Test #27: TC-002: cancelar un Job en ejecución libera el cupo ................   Passed    0.00 sec
+    Start 28: TC-002: cancelar un Job en cola no lanza ningún proceso
+5/5 Test #28: TC-002: cancelar un Job en cola no lanza ningún proceso ............   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =   0.01 sec

@@ -1,0 +1,61 @@
+Test project /home/santi/PROYECTO/JobRunner/build
+      Start  1: to_string devuelve el nombre de cada estado
+ 1/28 Test  #1: to_string devuelve el nombre de cada estado ................................................   Passed    0.00 sec
+      Start  2: Transiciones permitidas desde QUEUED
+ 2/28 Test  #2: Transiciones permitidas desde QUEUED .......................................................   Passed    0.00 sec
+      Start  3: Transiciones permitidas desde RUNNING
+ 3/28 Test  #3: Transiciones permitidas desde RUNNING ......................................................   Passed    0.00 sec
+      Start  4: Los estados terminales no tienen ninguna transición de salida
+ 4/28 Test  #4: Los estados terminales no tienen ninguna transición de salida .............................   Passed    0.00 sec
+      Start  5: Job::transition_to aplica transiciones válidas
+ 5/28 Test  #5: Job::transition_to aplica transiciones válidas ............................................   Passed    0.00 sec
+      Start  6: Job::transition_to lanza logic_error ante una transición inválida y conserva el estado
+ 6/28 Test  #6: Job::transition_to lanza logic_error ante una transición inválida y conserva el estado ...   Passed    0.00 sec
+      Start  7: submit válido devuelve un id y lanza el proceso
+ 7/28 Test  #7: submit válido devuelve un id y lanza el proceso ...........................................   Passed    0.00 sec
+      Start  8: Cada submit distinto recibe un id único
+ 8/28 Test  #8: Cada submit distinto recibe un id único ...................................................   Passed    0.00 sec
+      Start  9: submit con comando vacío se rechaza con mensaje y no crea un job
+ 9/28 Test  #9: submit con comando vacío se rechaza con mensaje y no crea un job ..........................   Passed    0.00 sec
+      Start 10: Una solicitud repetida del mismo cliente reutiliza el job
+10/28 Test #10: Una solicitud repetida del mismo cliente reutiliza el job ..................................   Passed    0.00 sec
+      Start 11: El mismo comando de otro cliente no se considera duplicado
+11/28 Test #11: El mismo comando de otro cliente no se considera duplicado .................................   Passed    0.00 sec
+      Start 12: Un proceso que termina con código 0 deja el job en SUCCEEDED
+12/28 Test #12: Un proceso que termina con código 0 deja el job en SUCCEEDED ..............................   Passed    0.00 sec
+      Start 13: Un código distinto de 0 deja el job en FAILED con ese código
+13/28 Test #13: Un código distinto de 0 deja el job en FAILED con ese código .............................   Passed    0.00 sec
+      Start 14: Un proceso terminado por señal deja el job en FAILED y registra la señal
+14/28 Test #14: Un proceso terminado por señal deja el job en FAILED y registra la señal .................   Passed    0.00 sec
+      Start 15: Los tiempos del job son coherentes: recibido <= inicio <= fin
+15/28 Test #15: Los tiempos del job son coherentes: recibido <= inicio <= fin ..............................   Passed    0.00 sec
+      Start 16: stdout y stderr se capturan por separado
+16/28 Test #16: stdout y stderr se capturan por separado ...................................................   Passed    0.00 sec
+      Start 17: list filtra por estado
+17/28 Test #17: list filtra por estado .....................................................................   Passed    0.00 sec
+      Start 18: status de un id desconocido no devuelve nada
+18/28 Test #18: status de un id desconocido no devuelve nada ...............................................   Passed    0.00 sec
+      Start 19: Cancelar un job en ejecución envía SIGTERM y lo deja en CANCELED
+19/28 Test #19: Cancelar un job en ejecución envía SIGTERM y lo deja en CANCELED .........................   Passed    0.00 sec
+      Start 20: Un job cancelado conserva CANCELED cuando su proceso termina después
+20/28 Test #20: Un job cancelado conserva CANCELED cuando su proceso termina después ......................   Passed    0.00 sec
+      Start 21: Cancelar dos veces el mismo job es idempotente
+21/28 Test #21: Cancelar dos veces el mismo job es idempotente .............................................   Passed    0.00 sec
+      Start 22: Cancelar un job ya terminado es un éxito sin cambios
+22/28 Test #22: Cancelar un job ya terminado es un éxito sin cambios ......................................   Passed    0.00 sec
+      Start 23: Cancelar un id desconocido devuelve false
+23/28 Test #23: Cancelar un id desconocido devuelve false ..................................................   Passed    0.00 sec
+      Start 24: TC-002: no se lanzan más procesos que el límite
+24/28 Test #24: TC-002: no se lanzan más procesos que el límite ..........................................   Passed    0.00 sec
+      Start 25: TC-002: los Jobs excedentes esperan en orden de llegada
+25/28 Test #25: TC-002: los Jobs excedentes esperan en orden de llegada ....................................   Passed    0.00 sec
+      Start 26: TC-002: al terminar un Job se despacha el más antiguo de la cola
+26/28 Test #26: TC-002: al terminar un Job se despacha el más antiguo de la cola ..........................   Passed    0.00 sec
+      Start 27: TC-002: cancelar un Job en ejecución libera el cupo
+27/28 Test #27: TC-002: cancelar un Job en ejecución libera el cupo .......................................   Passed    0.00 sec
+      Start 28: TC-002: cancelar un Job en cola no lanza ningún proceso
+28/28 Test #28: TC-002: cancelar un Job en cola no lanza ningún proceso ...................................   Passed    0.00 sec
+
+100% tests passed, 0 tests failed out of 28
+
+Total Test time (real) =   0.06 sec
