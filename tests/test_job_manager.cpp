@@ -88,6 +88,16 @@ TEST_CASE("El mismo comando de otro cliente no se considera duplicado", "[submit
     CHECK(f.launcher.launches.size() == 2);
 }
 
+TEST_CASE("El mismo comando con otros argumentos no se considera duplicado", "[submit][TC-018]") {
+    Fixture f;
+    auto a = f.manager.submit("sleep", {"5"}, kClient);
+    auto b = f.manager.submit("sleep", {"6"}, kClient);
+
+    CHECK_FALSE(b.was_duplicate);
+    CHECK(a.job_id != b.job_id);
+    CHECK(f.launcher.launches.size() == 2);
+}
+
 // --- TC-003 / TC-006: ciclo de vida, tiempos y código de salida ----------------
 
 TEST_CASE("Un proceso que termina con código 0 deja el job en SUCCEEDED", "[lifecycle][TC-003]") {
@@ -123,6 +133,16 @@ TEST_CASE("Un proceso terminado por señal deja el job en FAILED y registra la s
     REQUIRE(job.has_value());
     CHECK(job->state == JobState::Failed);
     CHECK(job->exit_signal == SIGKILL);
+}
+
+TEST_CASE("La terminación de un job no afecta a otro", "[lifecycle][RNF-09]") {
+    Fixture f;
+    auto a = f.manager.submit("false", {}, kClient).job_id;
+    auto b = f.manager.submit("sleep", {"100"}, kClient).job_id;
+    f.launcher.exit_child(0, 1);
+
+    CHECK(f.manager.status(a)->state == JobState::Failed);
+    CHECK(f.manager.status(b)->state == JobState::Running);
 }
 
 TEST_CASE("Los tiempos del job son coherentes: recibido <= inicio <= fin", "[lifecycle][TC-003][RF-07]") {
@@ -234,4 +254,5 @@ TEST_CASE("Cancelar un job ya terminado es un éxito sin cambios", "[cancel][TC-
 TEST_CASE("Cancelar un id desconocido devuelve false", "[cancel][TC-005]") {
     Fixture f;
     CHECK_FALSE(f.manager.cancel(999));
+    CHECK(f.launcher.signals.empty());
 }

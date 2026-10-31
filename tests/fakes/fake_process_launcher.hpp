@@ -32,6 +32,16 @@ class FakeProcessLauncher : public IProcessLauncher {
 
     void send_signal(pid_t pid, int signal) override { signals.emplace_back(pid, signal); }
 
+    // Huella determinista: el "starttime" es el propio pid.
+    std::optional<ProcessFingerprint> fingerprint(pid_t pid) const override {
+        return ProcessFingerprint{"fake-boot", static_cast<std::uint64_t>(pid)};
+    }
+
+    std::size_t terminate_orphan_group(pid_t pgid, const ProcessFingerprint& leader) override {
+        orphan_terminations.emplace_back(pgid, leader);
+        return orphan_group_size;
+    }
+
     // --- Ayudas para la prueba ---------------------------------------------
     void emit_output(std::size_t index, bool is_stderr, const std::string& data) {
         auto& l = launches.at(index);
@@ -52,6 +62,8 @@ class FakeProcessLauncher : public IProcessLauncher {
 
     std::vector<Launch> launches;
     std::vector<std::pair<pid_t, int>> signals;
+    std::vector<std::pair<pid_t, ProcessFingerprint>> orphan_terminations;
+    std::size_t orphan_group_size{0};  // lo que devuelve terminate_orphan_group
 
    private:
     pid_t next_pid_{1000};
