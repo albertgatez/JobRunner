@@ -104,6 +104,7 @@ Job history (command, state, timestamps, exit code, stdout/stderr) is kept in SQ
 
 - **Controlled shutdown** (`Ctrl+C` or `kill <pid>`): jobs in `RUNNING` are canceled (`CANCELED`, with `finished_at` and `"diagnostic": "cancelado por cierre del servicio"`). Jobs that ignore `SIGTERM` for 5 s get `SIGKILL`. Jobs still in `QUEUED` stay queued and start when the server comes back.
 - **Abrupt termination** (`kill -9`, crash): the kernel kills each job's main process together with the server. On the next start, jobs that were `RUNNING` become `FAILED` with `"diagnostic": "interrumpido por reinicio del servicio"`, and any leftover process of theirs is terminated after checking it is really the same process. `QUEUED` jobs are queued again in arrival order.
+- **Canceling a running job**: the server sends `SIGTERM` to its process group and reports `CANCELED` immediately. If the leader is still running after 5 s, the server sends `SIGKILL`; if the leader exits sooner, the timer is canceled. Descendants that ignore `SIGTERM` are not currently checked by this individual-cancel path.
 
 **Terminal 2 — Run client test commands:**
 
@@ -164,7 +165,7 @@ Job history (command, state, timestamps, exit code, stdout/stderr) is kept in SQ
 
 - Empty commands are rejected with an error.
 - If you submit the identical command with identical arguments within **3 seconds**, the server returns the original job ID instead of creating a duplicate.
-- There is no concurrency limit — all submitted jobs start immediately.
+- The server runs up to `max_concurrent` jobs at a time (default 3); additional jobs wait in a FIFO queue (default capacity 10). Requests are rejected if the queue is full.
 
 ---
 
@@ -257,7 +258,7 @@ Job history (command, state, timestamps, exit code, stdout/stderr) is kept in SQ
 | Current State | Result |
 |---------------|--------|
 | `QUEUED` | Marked as `CANCELED` immediately (never starts) |
-| `RUNNING` | SIGTERM sent to the job's process group |
+| `RUNNING` | SIGTERM sent to the process group; SIGKILL follows after 5 s if the leader is still running |
 | `SUCCEEDED` / `FAILED` / `CANCELED` | No-op — returns success, no side effects |
 
 Canceling an already-finished job is **idempotent** — it always returns `"ok": true`.
@@ -325,7 +326,8 @@ All responses are JSON objects. Every response contains an `"ok"` field:
 | `args` | array of strings | Arguments passed to the command |
 | `state` | string | Current state (see [Job States](#job-states)) |
 | `exit_code` | integer / null | Exit code if the process exited normally, otherwise `null` |
-| `exit_signal` | integer / null | Signal number if the process was killed, otherwise `null` |
+| `exit_signal` | integer / null | Signal number if the process exited due to a signal; currently not populated when the job was already marked `CANCELED` |
+| `diagnostic` | string | Explains recovery after a restart or cancellation during controlled shutdown |
 | `stdout` | string | Captured standard output |
 | `stderr` | string | Captured standard error |
 | `received_at` | string (ISO 8601) | When the job was accepted |
@@ -361,10 +363,10 @@ The CLI process exits with:
                                       │  │ (business logic)  │  │
                                       │  └──┬──────────┬─────┘  │
                                       │     │          │        │
-                                      │  ┌──▼──┐   ┌───▼──────┐ │
-                                      │  │Store│   │ Process  │ │
-                                      │  │(mem)│   │ Launcher │ │
-                                      │  └─────┘   └──────────┘ │
+                                      │  ┌──▼────┐  ┌──▼──────┐ │
+                                      │  │SQLite │  │ Process │ │
+                                      │  │ Store │  │ Launcher│ │
+                                      │  └───────┘  └─────────┘ │
                                       └─────────────────────────┘
 ```
 
@@ -372,7 +374,10 @@ Key design points:
 
 - **Single-threaded event loop** — all I/O and signal handling happens on one thread using `epoll(7)`. No locks, no race conditions.
 - **Length-prefixed framing** — each message has a 4-byte big-endian length header followed by a UTF-8 JSON payload (max 1 MiB).
-- **In-memory storage** — job data is held in memory and is lost when the server restarts.
+- **SQLite storage** — job data and output are persisted in `./data/jobrunner.db` by default; use `--data-dir` to choose another directory.
+- **Recovery** — queued jobs are restored in arrival order; jobs interrupted while running are marked `FAILED` and any verified leftover process group is terminated before the server accepts clients.
+- **Bounded concurrency** — at most three jobs run at once by default; queued jobs are dispatched FIFO as capacity becomes available.
+- **Graceful shutdown** — the server stops accepting requests, cancels running jobs, and escalates from `SIGTERM` to `SIGKILL` to avoid leaving processes behind.
 - **Separate stdout/stderr** — each job's output streams are captured independently through pipes.
 
 ---
@@ -384,8 +389,8 @@ Key design points:
 | `connect: No such file or directory` | Server is not running | Start the server first: `./jobrunner-server` |
 | `connect: Connection refused` | Wrong socket path | Use the same socket path for server and client. Default is `/tmp/jobrunner.sock` |
 | `{"ok":false,"error":"empty command"}` | No command provided | Provide a command: `./jobrunner-cli <socket> submit ls` |
-| Job stuck in `QUEUED` | (Currently unlikely) | Jobs start immediately in this version; this will change when a real queue is implemented |
-| Server doesn't shut down on Ctrl+C | — | Send SIGTERM: `kill <pid>` |
+| Job remains in `QUEUED` | All execution slots are occupied | Wait for a running job to finish, or cancel one; queued jobs start FIFO |
+| Server shutdown takes several seconds | A job is ignoring `SIGTERM` | The server waits up to 5 s before sending `SIGKILL` |
 
 ---
 
@@ -395,6 +400,5 @@ The following are **not yet implemented** in this version:
 
 | Feature | Description |
 |---------|-------------|
-| **Persistence** | Jobs are stored in memory only. A server restart loses all job data. SQLite persistence is planned. |
 | **Remote access** | Only local Unix socket communication. TCP listener for LAN/VPN access is planned. |
 | **Configuration file** | No config file support. All settings use hardcoded defaults. |
