@@ -48,7 +48,8 @@ class JobManager {
       * @param max_queue_size Capacidad maxima de la cola antes de rechazar (RF-25).
       */
     JobManager(IJobStore& store, IProcessLauncher& launcher, Logger& logger,
-               std::size_t max_concurrent_jobs = 3, std::size_t max_queue_size = 10);
+               std::size_t max_concurrent_jobs = 3, std::size_t max_queue_size = 10,
+               std::chrono::milliseconds cancel_timeout = std::chrono::seconds{5});
     // `client_origin` identifies who sent the request (e.g. "pid:1234" for a Unix-socket peer) and scopes the duplicate-request window (RF-27) so two different clients submitting the same command are never merged into one job.
      /**
       * Registra una solicitud de ejecucion. Si no hay cupo, encola el job;
@@ -172,11 +173,16 @@ class JobManager {
 
     const std::size_t max_concurrent_jobs_;
     const std::size_t max_queue_size_;
+    const std::chrono::milliseconds cancel_timeout_;
     // Procesos realmente vivos (job -> pid); su tamano es el cupo ocupado.
     // Un job CANCELED sigue aqui hasta que su proceso termina (ADR-003).
     std::unordered_map<JobId, pid_t> live_processes_;
     std::deque<JobId> queue_;
     bool shutting_down_{false};
+    // Temporizadores de escalamiento SIGTERM->SIGKILL armados por cancel()
+    // sobre un job RUNNING (ADR-006). Se cancelan en on_child_exit() si el
+    // proceso termina antes del timeout.
+    std::unordered_map<JobId, TimerId> escalation_timers_;
 };
 
 }  // namespace jobrunner

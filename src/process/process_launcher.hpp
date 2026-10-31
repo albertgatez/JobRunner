@@ -2,6 +2,7 @@
 
 #include <sys/types.h>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -31,6 +32,11 @@ struct ProcessFingerprint {
     std::string boot_id;         // /proc/sys/kernel/random/boot_id
     std::uint64_t start_time{};  // campo 22 de /proc/<pid>/stat (ticks desde el arranque)
 };
+
+/**
+ * Identificador de un temporizador programado con schedule_once().
+ */
+using TimerId = std::uint64_t;
 
 /**
  * Interfaz para lanzar y senializar procesos de jobs.
@@ -77,6 +83,23 @@ class IProcessLauncher {
       * @return Cantidad de procesos que se encontraron vivos y se terminaron.
       */
     virtual std::size_t terminate_orphan_group(pid_t pgid, const ProcessFingerprint& leader) = 0;
+
+     /**
+      * Programa `on_fire` para ejecutarse una sola vez, despues de `delay`,
+      * sin bloquear el event loop (ADR-006: escalamiento de cancelacion).
+      * @param delay Tiempo de espera antes de disparar.
+      * @param on_fire Callback a ejecutar al expirar.
+      * @return Identificador para cancelar el temporizador con cancel_timer().
+      */
+    virtual TimerId schedule_once(std::chrono::milliseconds delay,
+                                   std::function<void()> on_fire) = 0;
+
+     /**
+      * Cancela un temporizador pendiente. No hace nada si ya se disparo o
+      * ya se habia cancelado.
+      * @param id Identificador devuelto por schedule_once().
+      */
+    virtual void cancel_timer(TimerId id) = 0;
 };
 
 }  // namespace jobrunner

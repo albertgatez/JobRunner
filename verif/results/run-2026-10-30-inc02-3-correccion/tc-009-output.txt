@@ -1,0 +1,30 @@
+== TC-009 run-id=run-2026-10-30-inc02-3-correccion binarios=80cf42d + corrección
+== Paso 1: SIGINT con 3 jobs en ejecución y 1 en cola
+    PID    PGID STAT CMD
+  44366   44366 S    sleep 60
+  44368   44368 S    sleep 61
+  44370   44370 S    sleep 62
+[OK]   se identificaron los 3 jobs en ejecución
+código de salida: 0, tiempo de cierre: 0.0s
+[OK]   código de salida 0
+[OK]   cierre antes del plazo de gracia (< 4 s)
+[OK]   los 3 jobs ya no existen (RNF-30)
+[OK]   el job en cola nunca se lanzó
+[OK]   el socket se eliminó (RNF-25)
+== Paso 2: SIGTERM con un job que ignora SIGTERM -> escala a SIGKILL
+[OK]   el servidor sigue vivo durante el plazo de gracia
+[OK]   el job sigue vivo durante el plazo de gracia
+código de salida: 0, tiempo de cierre: 5.1s
+[OK]   el cierre esperó el plazo de gracia (4-8 s)
+[OK]   código de salida 0
+[OK]   no queda ningún proceso del grupo
+[OK]   la bitácora registra el SIGKILL
+== Paso 3: el líder muere con SIGTERM pero un subproceso lo ignora
+44453 bash -c (trap "" TERM; exec sleep 60) & wait
+44454 sleep 60
+[OK]   el job tiene un subproceso en su grupo
+código de salida: 0, tiempo de cierre: 0.0s
+[OK]   cierre antes del plazo de gracia (< 4 s)
+[OK]   no queda ningún proceso del grupo (RNF-30)
+== Comprobaciones ejecutadas: 15 (esperadas: 15) | fallos: 0
+RESULTADO TC-009: PASS
