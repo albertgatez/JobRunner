@@ -20,6 +20,7 @@ stateDiagram-v2
     [*] --> QUEUED: submit
     QUEUED --> RUNNING: dispatch (se lanza el proceso)
     QUEUED --> CANCELED: cancel
+    QUEUED --> FAILED: no se pudo crear el proceso
     RUNNING --> SUCCEEDED: el proceso termina con código 0
     RUNNING --> FAILED: código distinto de 0 o terminado por señal
     RUNNING --> CANCELED: cancel
@@ -37,6 +38,7 @@ La función `is_valid_transition()` (`job.cpp`) es la única fuente de verdad. C
 | (nuevo) | `QUEUED` | `submit` | `InMemoryJobStore::create` |
 | `QUEUED` | `RUNNING` | `JobManager::dispatch` tras lanzar el proceso | `job_manager.cpp` (`dispatch`) |
 | `QUEUED` | `CANCELED` | `JobManager::cancel` | `job_manager.cpp` (`cancel`) |
+| `QUEUED` | `FAILED` | Fallo al crear el proceso (`fork` o `pipe`) | `job_manager.cpp` (`on_launch_failed`) |
 | `RUNNING` | `SUCCEEDED` | Terminación del proceso con código 0 y sin señal | `job_manager.cpp` (`on_child_exit`) |
 | `RUNNING` | `FAILED` | Terminación con código distinto de 0 o por señal | `job_manager.cpp` (`on_child_exit`) |
 | `RUNNING` | `CANCELED` | `JobManager::cancel` (envía `SIGTERM` al grupo de procesos) | `job_manager.cpp` (`cancel`) |
@@ -58,6 +60,7 @@ La función `is_valid_transition()` (`job.cpp`) es la única fuente de verdad. C
 | `pid` | Pasa a `RUNNING`. |
 | `exit_code` | El proceso termina por sí mismo (`SUCCEEDED` o `FAILED`). |
 | `exit_signal` | El proceso termina por una señal. |
+| `diagnostic` | No se pudo crear el proceso, se interrumpió por un reinicio o se canceló por cierre del servicio. |
 
 ## 6. Comportamiento actual y limitaciones
 
@@ -65,7 +68,7 @@ La función `is_valid_transition()` (`job.cpp`) es la única fuente de verdad. C
 - **Los tiempos no salen en la respuesta.** `received_at`, `started_at` y `finished_at` se guardan, pero `status` y `list` aún no los devuelven. **Pendiente.**
 - **Un Job cancelado en ejecución no guarda `exit_code` ni `exit_signal`.** Se marca `CANCELED` al instante y el evento de salida del proceso se ignora.
 - **Un comando inexistente termina en `FAILED` con código 127.** El Job se acepta y el error aparece en el `exec` del proceso hijo. Es una decisión de diseño, no un error del servidor.
-- **No existe `QUEUED → FAILED`.** Si falla la creación del proceso (`fork` o `pipe`), hoy el Job no se marca como `FAILED` (RF-29). Al implementarlo, hay que agregar esa transición a `is_valid_transition`. **Pendiente (Hito 2).**
+- **Un fallo al crear el proceso deja el Job en `FAILED`.** Si falla `fork` o `pipe`, el Job pasa de `QUEUED` a `FAILED` con diagnóstico y sin `started_at` (RF-29). Sale de la ventana de duplicados, así que se puede reenviar de inmediato, y la cola sigue con el siguiente Job. Si el sistema sigue sin recursos, los Jobs de la cola también terminan en `FAILED`, sin reintentos.
 - **Sin recuperación tras reinicio.** El estado vive en memoria. Cuando exista persistencia, un Job que estaba en `RUNNING` al caer el servidor no deberá reportarse como `RUNNING` (RNF-10, RNF-31). **Pendiente (Hito 2).**
 
 ## 7. Verificación

@@ -1,0 +1,17 @@
+2026-10-30T21:44:51 [INFO] base de datos: /tmp/tmp.Lspw7MVeSp/jobrunner.db
+2026-10-30T21:44:51 [INFO] recuperacion completada: 0 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-10-30T21:44:51 [INFO] JobRunner escuchando en /tmp/jobrunner-tc008.sock
+2026-10-30T21:44:51 [INFO] job=1 job recibido: sleep
+2026-10-30T21:44:51 [INFO] job=1 job en ejecucion (pid 67786)
+2026-10-30T21:44:51 [INFO] job=2 job recibido: echo
+2026-10-30T21:44:51 [INFO] job=2 job encolado, en espera de cupo
+2026-10-30T21:44:51 [INFO] job=3 job recibido: echo
+2026-10-30T21:44:51 [INFO] job=3 job encolado, en espera de cupo
+2026-10-30T21:44:52 [INFO] job=1 job finalizado (codigo 0)
+2026-10-30T21:44:52 [ERROR] job=2 no se pudo crear el proceso: fork: Resource temporarily unavailable
+2026-10-30T21:44:52 [ERROR] job=3 no se pudo crear el proceso: fork: Resource temporarily unavailable
+2026-10-30T21:44:53 [INFO] job=4 job recibido: echo
+2026-10-30T21:44:53 [INFO] job=4 job en ejecucion (pid 67835)
+2026-10-30T21:44:53 [INFO] job=4 job finalizado (codigo 0)
+2026-10-30T21:44:53 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-10-30T21:44:53 [INFO] JobRunner detenido

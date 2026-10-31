@@ -39,7 +39,8 @@ std::optional<JobState> parse_job_state(std::string_view text) {
 bool is_valid_transition(JobState from, JobState to) {
     switch (from) {
         case JobState::Queued:
-            return to == JobState::Running || to == JobState::Canceled;
+            return to == JobState::Running || to == JobState::Canceled ||
+                   to == JobState::Failed;  // Failed: no se pudo crear el proceso
         case JobState::Running:
             return to == JobState::Succeeded || to == JobState::Failed ||
                    to == JobState::Canceled;

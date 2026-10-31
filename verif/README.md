@@ -97,6 +97,7 @@ Para que cuente como evidencia en la matriz, ejecuta los scripts sobre el commit
 | TC-001 Envío de Jobs y solicitudes inválidas | PASS | `verif/scripts/tc-001.sh` |
 | TC-002 Límite de concurrencia y cola | **FAIL** (la cola aún no existe; pasará con el Issue 4) | `verif/scripts/tc-002.sh` |
 | TC-003 Estados, tiempos y código de salida | PASS | `verif/scripts/tc-003.sh` |
+| TC-008 Aislamiento de fallo: error al crear el proceso | PASS | `verif/scripts/tc-008.sh` |
 
 Pendiente la revisión de cada caso por un segundo integrante. El detalle está en `test-cases/`.
 

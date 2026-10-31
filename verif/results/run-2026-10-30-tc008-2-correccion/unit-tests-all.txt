@@ -1,0 +1,213 @@
+Test project /home/santi/PROYECTO/JobRunner/build-revision/build
+        Start   1: to_string devuelve el nombre de cada estado
+  1/104 Test   #1: to_string devuelve el nombre de cada estado ................................................   Passed    0.00 sec
+        Start   2: Transiciones permitidas desde QUEUED
+  2/104 Test   #2: Transiciones permitidas desde QUEUED .......................................................   Passed    0.00 sec
+        Start   3: Transiciones permitidas desde RUNNING
+  3/104 Test   #3: Transiciones permitidas desde RUNNING ......................................................   Passed    0.00 sec
+        Start   4: Los estados terminales no tienen ninguna transición de salida
+  4/104 Test   #4: Los estados terminales no tienen ninguna transición de salida .............................   Passed    0.00 sec
+        Start   5: Job::transition_to aplica transiciones válidas
+  5/104 Test   #5: Job::transition_to aplica transiciones válidas ............................................   Passed    0.00 sec
+        Start   6: Job::transition_to lanza logic_error ante una transición inválida y conserva el estado
+  6/104 Test   #6: Job::transition_to lanza logic_error ante una transición inválida y conserva el estado ...   Passed    0.00 sec
+        Start   7: submit válido devuelve un id y lanza el proceso
+  7/104 Test   #7: submit válido devuelve un id y lanza el proceso ...........................................   Passed    0.00 sec
+        Start   8: Cada submit distinto recibe un id único
+  8/104 Test   #8: Cada submit distinto recibe un id único ...................................................   Passed    0.00 sec
+        Start   9: submit con comando vacío se rechaza con mensaje y no crea un job
+  9/104 Test   #9: submit con comando vacío se rechaza con mensaje y no crea un job ..........................   Passed    0.00 sec
+        Start  10: Una solicitud repetida del mismo cliente reutiliza el job
+ 10/104 Test  #10: Una solicitud repetida del mismo cliente reutiliza el job ..................................   Passed    0.00 sec
+        Start  11: El mismo comando de otro cliente no se considera duplicado
+ 11/104 Test  #11: El mismo comando de otro cliente no se considera duplicado .................................   Passed    0.00 sec
+        Start  12: El mismo comando con otros argumentos no se considera duplicado
+ 12/104 Test  #12: El mismo comando con otros argumentos no se considera duplicado ............................   Passed    0.00 sec
+        Start  13: Un proceso que termina con código 0 deja el job en SUCCEEDED
+ 13/104 Test  #13: Un proceso que termina con código 0 deja el job en SUCCEEDED ..............................   Passed    0.00 sec
+        Start  14: Un código distinto de 0 deja el job en FAILED con ese código
+ 14/104 Test  #14: Un código distinto de 0 deja el job en FAILED con ese código .............................   Passed    0.00 sec
+        Start  15: Un proceso terminado por señal deja el job en FAILED y registra la señal
+ 15/104 Test  #15: Un proceso terminado por señal deja el job en FAILED y registra la señal .................   Passed    0.00 sec
+        Start  16: La terminación de un job no afecta a otro
+ 16/104 Test  #16: La terminación de un job no afecta a otro .................................................   Passed    0.00 sec
+        Start  17: Los tiempos del job son coherentes: recibido <= inicio <= fin
+ 17/104 Test  #17: Los tiempos del job son coherentes: recibido <= inicio <= fin ..............................   Passed    0.00 sec
+        Start  18: stdout y stderr se capturan por separado
+ 18/104 Test  #18: stdout y stderr se capturan por separado ...................................................   Passed    0.00 sec
+        Start  19: list filtra por estado
+ 19/104 Test  #19: list filtra por estado .....................................................................   Passed    0.00 sec
+        Start  20: status de un id desconocido no devuelve nada
+ 20/104 Test  #20: status de un id desconocido no devuelve nada ...............................................   Passed    0.00 sec
+        Start  21: Cancelar un job en ejecución envía SIGTERM y lo deja en CANCELED
+ 21/104 Test  #21: Cancelar un job en ejecución envía SIGTERM y lo deja en CANCELED .........................   Passed    0.00 sec
+        Start  22: Un job cancelado conserva CANCELED cuando su proceso termina después
+ 22/104 Test  #22: Un job cancelado conserva CANCELED cuando su proceso termina después ......................   Passed    0.00 sec
+        Start  23: Cancelar dos veces el mismo job es idempotente
+ 23/104 Test  #23: Cancelar dos veces el mismo job es idempotente .............................................   Passed    0.00 sec
+        Start  24: Cancelar un job ya terminado es un éxito sin cambios
+ 24/104 Test  #24: Cancelar un job ya terminado es un éxito sin cambios ......................................   Passed    0.00 sec
+        Start  25: Cancelar un id desconocido devuelve false
+ 25/104 Test  #25: Cancelar un id desconocido devuelve false ..................................................   Passed    0.00 sec
+        Start  26: TC-002: no se lanzan más procesos que el límite
+ 26/104 Test  #26: TC-002: no se lanzan más procesos que el límite ..........................................   Passed    0.00 sec
+        Start  27: TC-002: los Jobs excedentes esperan en orden de llegada
+ 27/104 Test  #27: TC-002: los Jobs excedentes esperan en orden de llegada ....................................   Passed    0.00 sec
+        Start  28: TC-002: al terminar un Job se despacha el más antiguo de la cola
+ 28/104 Test  #28: TC-002: al terminar un Job se despacha el más antiguo de la cola ..........................   Passed    0.00 sec
+        Start  29: TC-002: cancelar un Job en ejecución libera el cupo
+ 29/104 Test  #29: TC-002: cancelar un Job en ejecución libera el cupo .......................................   Passed    0.00 sec
+        Start  30: TC-002: cancelar un Job en cola no lanza ningún proceso
+ 30/104 Test  #30: TC-002: cancelar un Job en cola no lanza ningún proceso ...................................   Passed    0.00 sec
+        Start  31: Cola llena: se rechaza la solicitud sin crear el Job
+ 31/104 Test  #31: Cola llena: se rechaza la solicitud sin crear el Job .......................................   Passed    0.00 sec
+        Start  32: TC-008: si falla el lanzamiento con cupo libre, el job queda FAILED
+ 32/104 Test  #32: TC-008: si falla el lanzamiento con cupo libre, el job queda FAILED ........................   Passed    0.00 sec
+        Start  33: TC-008: el job fallido se retira de la ventana de duplicados
+ 33/104 Test  #33: TC-008: el job fallido se retira de la ventana de duplicados ...............................   Passed    0.00 sec
+        Start  34: TC-008: un lanzamiento fallido no ocupa cupo
+ 34/104 Test  #34: TC-008: un lanzamiento fallido no ocupa cupo ...............................................   Passed    0.00 sec
+        Start  35: TC-008: un fallo al despachar desde la cola no detiene la cola
+ 35/104 Test  #35: TC-008: un fallo al despachar desde la cola no detiene la cola .............................   Passed    0.00 sec
+        Start  36: TC-008: un fallo durante la recuperación no impide arrancar
+ 36/104 Test  #36: TC-008: un fallo durante la recuperación no impide arrancar ...............................   Passed    0.00 sec
+        Start  37: TC-008: cancelar un job que falló al lanzarse no cambia su estado
+ 37/104 Test  #37: TC-008: cancelar un job que falló al lanzarse no cambia su estado .........................   Passed    0.00 sec
+        Start  38: sqlite: create asigna ids crecientes y deja el job en QUEUED
+ 38/104 Test  #38: sqlite: create asigna ids crecientes y deja el job en QUEUED ...............................   Passed    0.00 sec
+        Start  39: sqlite: todos los campos sobreviven a reabrir la base
+ 39/104 Test  #39: sqlite: todos los campos sobreviven a reabrir la base ......................................   Passed    0.00 sec
+        Start  40: sqlite: update de un id desconocido devuelve false sin llamar al mutador
+ 40/104 Test  #40: sqlite: update de un id desconocido devuelve false sin llamar al mutador ...................   Passed    0.00 sec
+        Start  41: sqlite: si el mutador lanza, la fila queda intacta (RNF-28)
+ 41/104 Test  #41: sqlite: si el mutador lanza, la fila queda intacta (RNF-28) ................................   Passed    0.00 sec
+        Start  42: sqlite: list filtra por estado y ordena por id
+ 42/104 Test  #42: sqlite: list filtra por estado y ordena por id .............................................   Passed    0.01 sec
+        Start  43: sqlite: los ids no se reutilizan al reabrir la base
+ 43/104 Test  #43: sqlite: los ids no se reutilizan al reabrir la base ........................................   Passed    0.00 sec
+        Start  44: sqlite: reset borra todo y reinicia los ids
+ 44/104 Test  #44: sqlite: reset borra todo y reinicia los ids ................................................   Passed    0.00 sec
+        Start  45: sqlite: una segunda instancia sobre la misma base es rechazada
+ 45/104 Test  #45: sqlite: una segunda instancia sobre la misma base es rechazada .............................   Passed    0.00 sec
+        Start  46: sqlite: el candado se libera al cerrar la base
+ 46/104 Test  #46: sqlite: el candado se libera al cerrar la base .............................................   Passed    0.00 sec
+        Start  47: sqlite: rechaza una base con un esquema mas nuevo
+ 47/104 Test  #47: sqlite: rechaza una base con un esquema mas nuevo ..........................................   Passed    0.00 sec
+        Start  48: sqlite: 500 jobs sin perdida de metadatos (RNF-06)
+ 48/104 Test  #48: sqlite: 500 jobs sin perdida de metadatos (RNF-06) .........................................   Passed    0.03 sec
+        Start  49: recover marca RUNNING como FAILED con diagnostico y termina su proceso
+ 49/104 Test  #49: recover marca RUNNING como FAILED con diagnostico y termina su proceso .....................   Passed    0.00 sec
+        Start  50: recover no intenta terminar procesos sin huella registrada
+ 50/104 Test  #50: recover no intenta terminar procesos sin huella registrada .................................   Passed    0.00 sec
+        Start  51: recover deja los jobs terminales sin cambios
+ 51/104 Test  #51: recover deja los jobs terminales sin cambios ...............................................   Passed    0.00 sec
+        Start  52: recover reencola QUEUED en orden de llegada respetando el nuevo limite
+ 52/104 Test  #52: recover reencola QUEUED en orden de llegada respetando el nuevo limite .....................   Passed    0.00 sec
+        Start  53: recover: los interrumpidos no ocupan cupo en la nueva instancia
+ 53/104 Test  #53: recover: los interrumpidos no ocupan cupo en la nueva instancia ............................   Passed    0.00 sec
+        Start  54: dispatch registra la huella del proceso para una recuperacion futura
+ 54/104 Test  #54: dispatch registra la huella del proceso para una recuperacion futura .......................   Passed    0.00 sec
+        Start  55: begin_shutdown cancela RUNNING con SIGTERM y conserva los QUEUED
+ 55/104 Test  #55: begin_shutdown cancela RUNNING con SIGTERM y conserva los QUEUED ...........................   Passed    0.00 sec
+        Start  56: durante el cierre se rechazan trabajos nuevos
+ 56/104 Test  #56: durante el cierre se rechazan trabajos nuevos ..............................................   Passed    0.00 sec
+        Start  57: begin_shutdown no reescribe un job que el cliente ya cancelo
+ 57/104 Test  #57: begin_shutdown no reescribe un job que el cliente ya cancelo ...............................   Passed    0.00 sec
+        Start  58: kill_live_processes escala a SIGKILL solo los que siguen vivos
+ 58/104 Test  #58: kill_live_processes escala a SIGKILL solo los que siguen vivos .............................   Passed    0.00 sec
+        Start  59: fingerprint identifica un proceso vivo y falla si no existe
+ 59/104 Test  #59: fingerprint identifica un proceso vivo y falla si no existe ................................   Passed    0.00 sec
+        Start  60: terminate_orphan_group termina al lider y a sus hijos
+ 60/104 Test  #60: terminate_orphan_group termina al lider y a sus hijos ......................................   Passed    0.05 sec
+        Start  61: terminate_orphan_group escala a SIGKILL si se ignora SIGTERM
+ 61/104 Test  #61: terminate_orphan_group escala a SIGKILL si se ignora SIGTERM ...............................   Passed    2.15 sec
+        Start  62: terminate_orphan_group no toca un PID reciclado (starttime distinto)
+ 62/104 Test  #62: terminate_orphan_group no toca un PID reciclado (starttime distinto) .......................   Passed    0.02 sec
+        Start  63: terminate_orphan_group no toca nada si el equipo se reinicio
+ 63/104 Test  #63: terminate_orphan_group no toca nada si el equipo se reinicio ...............................   Passed    0.01 sec
+        Start  64: create asigna IDs unicos y crece de uno en uno
+ 64/104 Test  #64: create asigna IDs unicos y crece de uno en uno .............................................   Passed    0.00 sec
+        Start  65: create deja el job en QUEUED con sus datos y hora de recepcion
+ 65/104 Test  #65: create deja el job en QUEUED con sus datos y hora de recepcion .............................   Passed    0.00 sec
+        Start  66: get de un ID desconocido devuelve nullopt
+ 66/104 Test  #66: get de un ID desconocido devuelve nullopt ..................................................   Passed    0.01 sec
+        Start  67: update aplica el mutador y persiste el cambio
+ 67/104 Test  #67: update aplica el mutador y persiste el cambio ..............................................   Passed    0.00 sec
+        Start  68: update de un ID desconocido devuelve false y no llama al mutador
+ 68/104 Test  #68: update de un ID desconocido devuelve false y no llama al mutador ...........................   Passed    0.00 sec
+        Start  69: get devuelve una copia: modificarla no altera el almacen
+ 69/104 Test  #69: get devuelve una copia: modificarla no altera el almacen ...................................   Passed    0.00 sec
+        Start  70: list filtra por estado y sin filtro devuelve todo
+ 70/104 Test  #70: list filtra por estado y sin filtro devuelve todo ..........................................   Passed    0.00 sec
+        Start  71: encode_frame antepone la longitud en big-endian
+ 71/104 Test  #71: encode_frame antepone la longitud en big-endian ............................................   Passed    0.00 sec
+        Start  72: un frame completo se extrae de una sola lectura
+ 72/104 Test  #72: un frame completo se extrae de una sola lectura ............................................   Passed    0.00 sec
+        Start  73: sin bytes suficientes no hay frame (ni siquiera el encabezado)
+ 73/104 Test  #73: sin bytes suficientes no hay frame (ni siquiera el encabezado) .............................   Passed    0.00 sec
+        Start  74: lecturas parciales: alimentar byte a byte reconstruye el frame
+ 74/104 Test  #74: lecturas parciales: alimentar byte a byte reconstruye el frame .............................   Passed    0.00 sec
+        Start  75: varios frames en un mismo feed salen en orden
+ 75/104 Test  #75: varios frames en un mismo feed salen en orden ..............................................   Passed    0.00 sec
+        Start  76: el sobrante de un frame queda para el siguiente
+ 76/104 Test  #76: el sobrante de un frame queda para el siguiente ............................................   Passed    0.00 sec
+        Start  77: payload vacio es un frame valido
+ 77/104 Test  #77: payload vacio es un frame valido ...........................................................   Passed    0.00 sec
+        Start  78: una longitud mayor a kMaxFrameSize se rechaza con excepcion
+ 78/104 Test  #78: una longitud mayor a kMaxFrameSize se rechaza con excepcion ................................   Passed    0.00 sec
+        Start  79: una longitud exactamente igual a kMaxFrameSize se acepta y espera datos
+ 79/104 Test  #79: una longitud exactamente igual a kMaxFrameSize se acepta y espera datos ....................   Passed    0.00 sec
+        Start  80: encode/decode de un payload grande
+ 80/104 Test  #80: encode/decode de un payload grande .........................................................   Passed    0.00 sec
+        Start  81: JSON mal formado produce un error, no una excepcion
+ 81/104 Test  #81: JSON mal formado produce un error, no una excepcion ........................................   Passed    0.00 sec
+        Start  82: solicitud sin 'op' o con 'op' no string se rechaza
+ 82/104 Test  #82: solicitud sin 'op' o con 'op' no string se rechaza .........................................   Passed    0.00 sec
+        Start  83: operacion desconocida se reporta con su nombre
+ 83/104 Test  #83: operacion desconocida se reporta con su nombre .............................................   Passed    0.00 sec
+        Start  84: submit exitoso devuelve job_id y lanza el proceso
+ 84/104 Test  #84: submit exitoso devuelve job_id y lanza el proceso ..........................................   Passed    0.00 sec
+        Start  85: submit sin args es valido
+ 85/104 Test  #85: submit sin args es valido ..................................................................   Passed    0.00 sec
+        Start  86: submit con comando vacio o ausente se rechaza (RF-02)
+ 86/104 Test  #86: submit con comando vacio o ausente se rechaza (RF-02) ......................................   Passed    0.00 sec
+        Start  87: submit con args que no son strings se rechaza sin lanzar nada
+ 87/104 Test  #87: submit con args que no son strings se rechaza sin lanzar nada ..............................   Passed    0.00 sec
+        Start  88: status devuelve estado, comando y salidas separadas
+ 88/104 Test  #88: status devuelve estado, comando y salidas separadas ........................................   Passed    0.00 sec
+        Start  89: status de un job desconocido o con id invalido falla limpiamente
+ 89/104 Test  #89: status de un job desconocido o con id invalido falla limpiamente ...........................   Passed    0.00 sec
+        Start  90: list sin filtro devuelve todos y con filtro solo los del estado
+ 90/104 Test  #90: list sin filtro devuelve todos y con filtro solo los del estado ............................   Passed    0.00 sec
+        Start  91: list con estado desconocido se rechaza
+ 91/104 Test  #91: list con estado desconocido se rechaza .....................................................   Passed    0.00 sec
+        Start  92: cancel de un job en ejecucion responde ok y envia SIGTERM
+ 92/104 Test  #92: cancel de un job en ejecucion responde ok y envia SIGTERM ..................................   Passed    0.00 sec
+        Start  93: cancel de un job desconocido o sin id falla
+ 93/104 Test  #93: cancel de un job desconocido o sin id falla ................................................   Passed    0.00 sec
+        Start  94: una solicitud valida recibe su respuesta enmarcada
+ 94/104 Test  #94: una solicitud valida recibe su respuesta enmarcada .........................................   Passed    0.00 sec
+        Start  95: dos solicitudes seguidas en un mismo write se responden en orden (RNF-24)
+ 95/104 Test  #95: dos solicitudes seguidas en un mismo write se responden en orden (RNF-24) ..................   Passed    0.00 sec
+        Start  96: una solicitud fragmentada en trozos pequenos se reensambla (RF-21)
+ 96/104 Test  #96: una solicitud fragmentada en trozos pequenos se reensambla (RF-21) .........................   Passed    0.02 sec
+        Start  97: un frame que declara mas de kMaxFrameSize cierra la conexion (RNF-14)
+ 97/104 Test  #97: un frame que declara mas de kMaxFrameSize cierra la conexion (RNF-14) ......................   Passed    0.00 sec
+        Start  98: la desconexion del cliente se detecta y se notifica (RF-22, RNF-08)
+ 98/104 Test  #98: la desconexion del cliente se detecta y se notifica (RF-22, RNF-08) ........................   Passed    0.00 sec
+        Start  99: el codigo de salida del hijo llega a on_exit
+ 99/104 Test  #99: el codigo de salida del hijo llega a on_exit ...............................................   Passed    0.00 sec
+        Start 100: stdout y stderr llegan por canales separados (RF-11)
+100/104 Test #100: stdout y stderr llegan por canales separados (RF-11) .......................................   Passed    0.00 sec
+        Start 101: un comando inexistente termina con codigo 127
+101/104 Test #101: un comando inexistente termina con codigo 127 ..............................................   Passed    0.00 sec
+        Start 102: el hijo NO hereda las senales bloqueadas por el Reactor (regresion SIGTERM)
+102/104 Test #102: el hijo NO hereda las senales bloqueadas por el Reactor (regresion SIGTERM) ................   Passed    0.00 sec
+        Start 103: send_signal(SIGTERM) realmente termina al hijo (regresion SIGTERM)
+103/104 Test #103: send_signal(SIGTERM) realmente termina al hijo (regresion SIGTERM) .........................   Passed    0.00 sec
+        Start 104: send_signal llega tambien a los nietos del grupo de procesos
+104/104 Test #104: send_signal llega tambien a los nietos del grupo de procesos ...............................   Passed    0.20 sec
+
+100% tests passed, 0 tests failed out of 104
+
+Total Test time (real) =   2.79 sec

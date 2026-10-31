@@ -198,8 +198,20 @@ pid_t PosixProcessLauncher::launch(const std::string& command,
     info.on_exit = std::move(on_exit);
     children_[pid] = std::move(info);
 
-    reactor_.add_read(out_fd, [this, pid, out_fd] { drain_pipe(pid, out_fd, false); });
-    reactor_.add_read(err_fd, [this, pid, err_fd] { drain_pipe(pid, err_fd, true); });
+    try {
+        reactor_.add_read(out_fd, [this, pid, out_fd] { drain_pipe(pid, out_fd, false); });
+        reactor_.add_read(err_fd, [this, pid, err_fd] { drain_pipe(pid, err_fd, true); });
+    } catch (...) {
+        // El hijo ya existe pero no se podria supervisar: no debe sobrevivir.
+        reactor_.remove(out_fd);
+        reactor_.remove(err_fd);
+        close(out_fd);
+        close(err_fd);
+        children_.erase(pid);
+        ::kill(-pid, SIGKILL);
+        waitpid(pid, nullptr, 0);
+        throw;
+    }
 
     return pid;
 }
