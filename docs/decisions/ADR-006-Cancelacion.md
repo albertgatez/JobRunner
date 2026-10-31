@@ -2,7 +2,7 @@
 
 | Campo          | Valor                                                                           |
 | -------------- | ------------------------------------------------------------------------------- |
-| Estado         | Propuesto (escalamiento pendiente de implementación; `SIGTERM` ya implementado) |
+| Estado         | Implementado (Hito 2; pruebas específicas de cancelación pendientes)             |
 | Fecha          | 2026-10-28                                                                      |
 | Autor          | Equipo JUAN                                                                     |
 | Req. afectados | RF-10, RF-26, RF-29, RF-30, RNF-09, RNF-30, RNF-33, RNF-34                      |
@@ -89,13 +89,18 @@ Se adopta la **Alternativa 3**. Al cancelar un Job en `RUNNING`:
 | `CANCELED` como estado final inmediato en el store tras la solicitud                       | Implementado (Hito 1) |
 | `setpgid(0,0)` por Job (grupo de procesos propio)                                          | Implementado (Hito 1) |
 | Señal dirigida al grupo completo (`kill(-pid, signal)`), no solo al líder                  | Implementado (Hito 1) |
-| Mecanismo de temporizador en `Reactor` (p. ej. `timerfd`)                                  | Pendiente (Hito 2)    |
-| Timeout configurable de escalamiento                                                       | Pendiente (Hito 2)    |
-| Envío de `SIGKILL` al grupo de procesos si el timeout expira sin terminación               | Pendiente (Hito 2)    |
-| Cancelación del temporizador cuando `on_child_exit` ocurre antes del timeout               | Pendiente (Hito 2)    |
-| Registro en bitácora de si la terminación fue por `SIGTERM` o por escalamiento a `SIGKILL` | Pendiente (Hito 2)    |
+| Mecanismo de temporizador en `Reactor` mediante `timerfd`                                  | Implementado (Hito 2) |
+| Temporizador no bloqueante del `Reactor` mediante `timerfd`                                | Implementado (Hito 2) |
+| Timeout de escalamiento                                                                    | Implementado: parámetro interno; 5 s por defecto, sin opción CLI |
+| Envío de `SIGKILL` al grupo si vence el timeout y el líder sigue activo                    | Implementado (Hito 2) |
+| Cancelación del temporizador cuando `on_child_exit` ocurre antes del timeout               | Implementado (Hito 2) |
+| Detección/terminación de descendientes vivos si el líder sale antes del timeout             | Pendiente: actualmente el timer se cancela al recolectar al líder |
+| Registro en bitácora del escalamiento a `SIGKILL`                                          | Implementado (Hito 2) |
+| Persistencia de la señal final en `exit_signal` para Jobs ya cancelados                    | Pendiente: `on_child_exit` conserva `CANCELED` y no actualiza ese campo |
 
-> **Nota (Hito 2, ADR-005):** el cierre controlado del servidor ya aplica esta misma política (`SIGTERM`, 5 s, `SIGKILL` al grupo) a todos los Jobs en ejecución, usando `Reactor::poll_once` para seguir recolectando hijos tras detener el event loop. Lo pendiente de este ADR es el temporizador por Job para la cancelación solicitada por un cliente mientras el servidor sigue en marcha.
+> **Implementación (Hito 2):** la cancelación solicitada por el cliente usa `timerfd` registrado en el `Reactor`; el valor predeterminado es 5 s. El cierre controlado también aplica `SIGTERM`, espera hasta 5 s y escala a `SIGKILL`, usando `Reactor::poll_once` para seguir recolectando hijos tras detener el event loop. El timeout no tiene aún una opción de configuración en la línea de comandos.
+
+> **Evidencia y limitaciones pendientes:** TC-009 verifica el escalamiento durante el cierre controlado, pero no sustituye una prueba de regresión específica para la cancelación solicitada por un cliente. En esa ruta, si el líder termina antes del timeout, su callback cancela el temporizador sin comprobar si quedaron descendientes vivos. Además, el código actual no persiste `exit_signal` después de que un Job ya pasó a `CANCELED`; por ello, el punto 6 de la decisión aún no está cumplido por completo.
 
 ## Consecuencias
 
@@ -115,7 +120,7 @@ Se adopta la **Alternativa 3**. Al cancelar un Job en `RUNNING`:
 
 ## Evidencia / prototipo
 
-La validación deberá demostrar progresivamente:
+La validación de la política deberá demostrar:
 
 1. Cancelar un Job que responde a `SIGTERM` con normalidad: confirmar que termina antes del timeout y que el temporizador se cancela sin llegar a enviar `SIGKILL`.
 2. Cancelar un Job que bloquea o ignora `SIGTERM` (p. ej. un script que lo captura y no sale): confirmar que, tras el timeout configurado, recibe `SIGKILL` y termina.
@@ -124,7 +129,7 @@ La validación deberá demostrar progresivamente:
 5. Enviar dos solicitudes de cancelación concurrentes sobre el mismo Job y confirmar un resultado coherente, sin doble `SIGKILL` ni temporizadores duplicados (RF-26).
 6. Medir que el event loop sigue atendiendo otras conexiones y Jobs normalmente mientras un temporizador de escalamiento está pendiente.
 
-La evidencia se almacenará en `verif/results/<run-id>/`, siguiendo el formato acordado en ADR-003.
+La evidencia se almacenará en `verif/results/<run-id>/`, siguiendo el formato acordado en ADR-003. TC-009 cubre la ruta de cierre del servidor; falta un caso dedicado a cancelación individual y a la persistencia de `exit_signal`.
 
 ## Requisitos afectados
 

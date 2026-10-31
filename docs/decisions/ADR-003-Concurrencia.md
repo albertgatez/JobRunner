@@ -260,16 +260,16 @@ En términos de las alternativas anteriores, se elige la **Alternativa 5** (proc
 
 | Elemento                                                                                           | Estado                      |
 | --- | --- |
-| Event loop `epoll`, `signalfd`, pipes y sockets no bloqueantes                                     | Implementado (Hito 1)       |
+| Event loop `epoll`, `signalfd`, `timerfd`, pipes y sockets no bloqueantes                          | Implementado (Hito 2)       |
 | Un proceso por Job con grupo de procesos propio y captura separada de stdout/stderr                | Implementado (Hito 1)       |
 | Restablecimiento de la máscara de señales en el hijo antes de `exec`                               | Implementado (Hito 1)       |
 | Detección de terminación de hijos y registro del código de salida                                  | Implementado (Hito 1)       |
 | Límite configurable `max_concurrent_jobs` y cola con capacidad máxima                              | Implementado (Hito 2)   |
 | Rechazo explícito por saturación de la cola                                                        | Implementado (Hito 2)   |
-| Escalamiento de cancelación (`SIGTERM` → `SIGKILL`)                                                | Pendiente (ADR futuro de cancelación) |
+| Escalamiento de cancelación (`SIGTERM` → `SIGKILL`)                                                | Parcial: ver limitación documentada en ADR-006 |
 | Política de saturación y backpressure                                                              | Implementado (Hito 2)   |
 | Manejo de error al crear el proceso (job marcado `FAILED` con diagnóstico, sin quedar en `QUEUED`) | Pendiente (Hito 2)          |
-| Cierre controlado sin procesos huérfanos (terminar y recolectar los Jobs en ejecución al apagar)   | Pendiente (Hito 2)          |
+| Cierre controlado sin procesos huérfanos (terminar y recolectar los Jobs en ejecución al apagar)   | Implementado (Hito 2; ver TC-009) |
 
 ### Modelo propuesto
 
@@ -527,8 +527,8 @@ Se establecen las siguientes reglas:
 - Al ser un solo hilo, un callback lento o bloqueante afecta la atención de todos los clientes y Jobs.
 - **Máscara de señales heredada (mitigado).** El servidor bloquea `SIGCHLD`, `SIGINT` y `SIGTERM` para usar `signalfd`, y esa máscara se hereda por `fork` y se conserva tras `exec`. Si el hijo no la restablece, el Job ignora `SIGTERM` y la cancelación no surte efecto. `PosixProcessLauncher` ya la restablece en el hijo antes de `exec`. Debe mantenerse una prueba de regresión que cancele un Job en ejecución y compruebe que el proceso realmente terminó.
 - **Fusión de `SIGCHLD` (mitigado).** Varias señales `SIGCHLD` pueden fusionarse en una sola lectura de `signalfd`. La recolección de hijos repite `waitpid(-1, WNOHANG)` hasta que no queden hijos terminados, lo que cubre el caso.
-- Si falla la creación del proceso (`fork` o `pipe`), el Job ya fue registrado. El Job Manager debe capturar el error, pasar el Job a `FAILED` con un mensaje de diagnóstico, registrarlo en la bitácora y retirarlo de la ventana de duplicados, para que ni quede en `QUEUED` indefinidamente ni se reutilice en un reenvío. Nota: hoy `is_valid_transition` no permite `QUEUED → FAILED`, por lo que al implementarlo habrá que agregar esa transición al modelo de estados. **Pendiente de implementar** (ver Estado de implementación).
-- Actualmente el apagado (`SIGINT`/`SIGTERM`) detiene el event loop sin terminar los Jobs en ejecución. Como cada Job tiene su propio grupo de procesos, no recibe `SIGHUP` al cerrar el servidor y podría quedar huérfano (RNF-30). **Pendiente de implementar** (ver Estado de implementación).
+- **Creación del proceso.** Si falla `fork` o la creación de pipes, `PosixProcessLauncher` lanza una excepción; el Job ya está registrado en `QUEUED`. El tratamiento de esa excepción y su transición a un estado terminal siguen pendientes (RF-29).
+- **Cierre controlado (resuelto en Hito 2).** El servidor mantiene el reactor atendiendo pipes y `SIGCHLD` durante la espera de cierre, envía `SIGTERM` y escala a `SIGKILL`; TC-009 cubre Jobs que ignoran la señal y subprocesos del grupo.
 
 ## Evidencia / prototipo
 
@@ -589,13 +589,13 @@ La existencia de un caso de prueba documentado no implica que el requisito haya 
 |RF-25|La cola limitada permite rechazar solicitudes cuando está llena.|
 |RF-26|El event loop de un solo hilo serializa las cancelaciones concurrentes sobre un mismo Job.|
 |RF-29|El Process Manager detecta terminaciones inesperadas.|
-|RF-30|El modelo permite implementar una política de escalamiento de cancelación.|
+|RF-30|La cancelación escala de `SIGTERM` a `SIGKILL` mientras el líder siga activo; el caso de descendientes tras salir el líder sigue pendiente (ver ADR-006).|
 |RNF-04|Permite demostrar al menos tres Jobs simultáneos con límite 3.|
 |RNF-07|Garantiza que no se creen más procesos de Job que el límite.|
 |RNF-08|Los errores de clientes no deben terminar el servicio.|
 |RNF-09|Un Job anormal no debe afectar otros Jobs.|
 |RNF-27|El modelo de un solo hilo mantiene la consistencia de estados sin locks.|
 |RNF-29|El sistema limita procesos, clientes y otros recursos.|
-|RNF-30|El diseño contempla liberación de procesos y recursos; el cierre sin huérfanos está pendiente (ver Estado de implementación).|
+|RNF-30|El cierre controlado y la recuperación terminan los procesos de Job que sigan vivos; ver TC-009 y ADR-005.|
 |RNF-33|Las pruebas de estrés verifican liberación de recursos.|
 |RNF-34|Los riesgos de concurrencia deben tener pruebas asociadas.|

@@ -298,15 +298,15 @@ Las decisiones específicas relacionadas con concurrencia, persistencia, recuper
 
 | Módulo                                      | Estado                              | Dónde está en el código                                                                  |
 | ------------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------- |
-| Network/API                                 | Implementado (Hito 1, solo local)   | `UnixSocketListener`, `Connection`, `FrameCodec`, `RequestHandler`                       |
-| Event loop (`Reactor`)                      | Implementado (Hito 1)               | `Reactor` (`epoll` + `signalfd`), ver ADR-003                                            |
-| Job Manager                                 | Implementado (Hito 1)               | `JobManager`, `Job`                                                                      |
-| Process Manager                             | Implementado (Hito 1)               | `IProcessLauncher`, `PosixProcessLauncher`                                               |
-| Persistence                                 | Parcial: solo en memoria            | `IJobStore`, `InMemoryJobStore` (persistencia en disco: Hito 2, ADR futuro)              |
-| Logging                                     | Implementado (Hito 1)               | `Logger`                                                                                 |
-| Queue Manager                               | Pendiente (Hito 2)                  | Hoy `submit` lanza el proceso siempre, sin límite ni cola                                |
-| Configuration                               | Pendiente (Hito 2)                  | Solo se recibe la ruta del socket como argumento                                         |
-| Recovery                                    | Pendiente (Hito 2)                  | No existe                                                                                |
+| Network/API                                 | Implementado (local)                 | `UnixSocketListener`, `Connection`, `FrameCodec`, `RequestHandler`                       |
+| Event loop (`Reactor`)                      | Implementado (Hito 2)                | `Reactor` (`epoll`, `signalfd`, `timerfd`), ver ADR-003                                  |
+| Job Manager                                 | Implementado (Hito 2)                | `JobManager`, `Job`                                                                      |
+| Process Manager                             | Implementado (Hito 2)                | `IProcessLauncher`, `PosixProcessLauncher`                                               |
+| Persistence                                 | Implementado (Hito 2)                | `IJobStore`, `SqliteJobStore`; `InMemoryJobStore` se conserva para pruebas               |
+| Logging                                     | Implementado                         | `Logger`                                                                                 |
+| Queue Manager                               | Implementado (Hito 2)                | Límite de concurrencia, cola FIFO y rechazo por saturación                               |
+| Configuration                               | Parcial                              | Opciones CLI para socket, concurrencia, directorio de datos y reset; sin archivo config |
+| Recovery                                    | Implementado (Hito 2)                | `JobManager::recover()` antes de aceptar conexiones                                      |
 | Restricción de acceso remoto (LAN/VPN)      | Pendiente (Hito 3)                  | No existe; el transporte actual es un Unix socket local                                  |
 
 ## Consecuencias
@@ -383,26 +383,26 @@ La validación incluirá pruebas de integración y revisión de las dependencias
 
 ## Requisitos afectados
 
-Los módulos marcados como pendientes en el Estado de implementación (Queue Manager, Configuration, Recovery, persistencia en disco y restricción de acceso remoto) indican que los requisitos que dependen de ellos aún no están cumplidos.
+Los módulos marcados como pendientes en el Estado de implementación indican que los requisitos que dependen de ellos aún no están cumplidos. Persistencia, recuperación, cola, concurrencia y cierre controlado ya están implementados en Hito 2; el acceso remoto y el archivo de configuración siguen pendientes.
 
 |Requisito|Relación|
 |---|---|
 |RF-01|El servidor recibe solicitudes para crear Jobs.|
 |RF-02|Network/API valida el formato de la solicitud y Job Manager valida su contenido (por ejemplo, comando vacío).|
-|RF-03|El Queue Manager administra Jobs pendientes (pendiente, Hito 2).|
+|RF-03|El Queue Manager administra Jobs pendientes en una cola FIFO (implementado, Hito 2).|
 |RF-04|El Process Manager ejecuta Jobs mediante procesos independientes.|
-|RF-05|El Queue Manager y Job Manager controlan la concurrencia (pendiente, Hito 2).|
+|RF-05|El Queue Manager y Job Manager controlan la concurrencia con un límite configurable por argumento CLI (implementado, Hito 2).|
 |RF-06|El Job Manager administra los estados del ciclo de vida.|
-|RF-07|Los tiempos y códigos de salida se guardan en el modelo del Job (Hito 1); pendiente exponerlos en `status`/`list` y persistirlos en disco.|
+|RF-07|Los tiempos y códigos de salida se conservan en SQLite y se exponen en la respuesta del Job.|
 |RF-08|El servidor permite consultar Jobs por ID.|
 |RF-09|El servidor permite listar Jobs.|
 |RF-10|Job Manager y Process Manager coordinan la cancelación.|
 |RF-11|Process Manager captura stdout y stderr por separado; el Job (vía `IJobStore`) los conserva.|
-|RF-12|Persistence conservará metadata después de un reinicio (pendiente, Hito 2).|
-|RF-13|Recovery reconstruirá el estado del servicio (pendiente, Hito 2).|
+|RF-12|SQLite conserva metadatos y resultados después de un reinicio (implementado, Hito 2).|
+|RF-13|Recovery reconstruye los Jobs pendientes e interrumpidos antes de aceptar conexiones (implementado, Hito 2).|
 |RF-14|Logging registra eventos y errores.|
-|RF-15|El servidor deja de aceptar conexiones al cerrar (implementado); terminar los Jobs en ejecución al apagar queda pendiente (ver RNF-30).|
-|RF-16|Configuration administrará los parámetros del servicio (pendiente, Hito 2).|
+|RF-15|El servidor deja de aceptar conexiones y termina los Jobs en ejecución al cerrar de forma controlada (implementado, Hito 2).|
+|RF-16|El servidor recibe opciones operativas por CLI; archivo de configuración pendiente.|
 |RF-17|El CLI proporciona la interfaz para el usuario.|
 |RF-18|La arquitectura cliente-servidor permite operación remota (pendiente, Hito 3).|
 |RF-19|Cliente local y remoto utilizan la misma lógica del servidor.|
@@ -411,15 +411,15 @@ Los módulos marcados como pendientes en el Estado de implementación (Queue Man
 |RF-22|El servidor continúa operando ante desconexiones del cliente.|
 |RF-23|Los módulos de configuración y administración aplicarán límites (pendiente).|
 |RF-24|El servidor podrá proporcionar información de salud del servicio (pendiente).|
-|RF-25|Queue Manager controlará la saturación de la cola (pendiente, ADR futuro de saturación).|
+|RF-25|Queue Manager rechaza nuevos Jobs cuando la cola está llena (implementado, Hito 2).|
 |RF-26|Job Manager controla cancelaciones concurrentes; el event loop de un solo hilo las serializa (ADR-003).|
 |RF-27|Job Manager aplica una ventana de deduplicación en memoria (3 s por comando, argumentos y origen del cliente); su semántica queda por documentar en un ADR posterior.|
 |RF-28|Network/API y Job Manager definen el comportamiento ante desconexiones.|
 |RF-29|Process Manager detecta terminaciones inesperadas.|
-|RF-30|Process Manager implementará la política de cancelación (escalamiento pendiente, ADR futuro de cancelación).|
+|RF-30|La cancelación envía `SIGTERM` y escala a `SIGKILL` tras 5 s si el líder sigue activo; la limpieza de descendientes si el líder sale antes sigue pendiente (ver ADR-006).|
 |RNF-17|La arquitectura separa responsabilidades mediante módulos.|
 |RNF-18|Las interfaces y decisiones arquitectónicas serán documentadas.|
 |RNF-27|El diseño debe mantener consistencia bajo concurrencia (modelo de un solo hilo, ADR-003).|
 |RNF-29|La arquitectura permite aplicar límites y rechazo ante saturación (pendiente).|
-|RNF-30|Process Manager debe liberar procesos y recursos; el cierre sin huérfanos está pendiente.|
+|RNF-30|El cierre controlado espera a los Jobs y escala a `SIGKILL`; la recuperación termina procesos supervivientes verificados (ver ADR-005 y TC-009).|
 |RNF-34|La decisión arquitectónica considera riesgos de seguridad y consistencia.|

@@ -84,7 +84,7 @@ Mínimo cubrir los **requisitos funcionales** obligatorios (RF-01 - RF-24).
 
 | Req ID | Descripción breve | Prioridad | Método | Caso(s) | Evidencia | Resultado | Defecto/Excepción |
 | ------ | ----------------- | --------- | ------ | ------- | --------- | --------- | ----------------- |
-| RF-15. | Iniciar y detener el servicio de forma controlada, sin aceptar Jobs nuevos durante el cierre | Alta | TEST |  |  |  |  |
+| RF-15. | Iniciar y detener el servicio de forma controlada, sin aceptar Jobs nuevos durante el cierre | Alta | TEST | TC-009 | `verif/results/run-2026-10-30-inc02-3-correccion/` | PASS (cierre y conservación de cola) | El rechazo de nuevos envíos se cubre en pruebas Catch2 `[TC-009]`. |
 | RF-16. | Configurar directorio de datos, límite de concurrencia, interfaz y puerto | Alta | TEST |  |  |  |  |
 | RF-17. | Proporcionar ayuda CLI y códigos de salida apropiados | Media | TEST |  |  |  |  |
 
@@ -170,7 +170,7 @@ Mínimo cubrir los **requisitos no funcionales** obligatorios (RNF-01 - RNF-26).
 | Req ID | Descripción breve | Prioridad | Método | Caso(s) | Evidencia | Resultado | Defecto/Excepción |
 | ------ | ----------------- | --------- | ------ | ------- | --------- | --------- | ----------------- |
 | RNF-24. | Tolerar mensajes fragmentados y múltiples solicitudes secuenciales | Alta | TEST |  |  |  |  |
-| RNF-25. | Liberar sockets y procesos hijos al cerrar | Alta | TEST |  |  |  |  |
+| RNF-25. | Liberar sockets y procesos hijos al cerrar | Alta | TEST | TC-009 | `verif/results/run-2026-10-30-inc02-3-correccion/` | PASS | - |
 | RNF-26. | Demostración remota solo en red privada o VPN, sin exposición a Internet | Crítica | INSPECTION / DEMO |  |  |  |  |
 
 ## 5.6 Consistencia y robustez (RNF-27 – RNF-34)
@@ -180,7 +180,7 @@ Mínimo cubrir los **requisitos no funcionales** obligatorios (RNF-01 - RNF-26).
 | RNF-27. | Transiciones de estado consistentes ante solicitudes concurrentes | Alta | TEST |  |  |  |  |
 | RNF-28. | Actualizaciones persistentes atómicas o recuperables | Alta | TEST / ANALYSIS |  |  |  |  |
 | RNF-29. | Backpressure o rechazo explícito al alcanzar límites (cola, memoria, fds, clientes) | Alta | TEST |  |  |  |  |
-| RNF-30. | No dejar procesos huérfanos tras un cierre o falla | Alta | TEST |  |  |  |  |
+| RNF-30. | No dejar procesos huérfanos tras un cierre o falla | Alta | TEST | TC-009 | `verif/results/run-2026-10-30-inc02-3-correccion/` |  | TC-009 PASS cubre cierre controlado; la recuperación ante caída abrupta aún requiere evidencia de sistema. |
 | RNF-31. | Recuperación que distingue pendientes, terminados e interrumpidos | Alta | TEST |  |  |  |  |
 | RNF-32. | Versión de protocolo y rechazo explícito de mensajes incompatibles | Alta | TEST |  |  |  |  |
 | RNF-33. | Pruebas de estrés que demuestren liberación de memoria, procesos, archivos y sockets | Alta | TEST / ANALYSIS |  |  |  |  |
