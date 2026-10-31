@@ -80,6 +80,7 @@ if(JOBRUNNER_BUILD_TESTS)
     tests/test_job_state.cpp
     tests/test_job_manager.cpp
     tests/test_concurrency_queue.cpp
+    tests/test_launch_failure.cpp
     tests/test_sqlite_job_store.cpp
     tests/test_recovery.cpp
     tests/test_orphan_termination.cpp

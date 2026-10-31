@@ -1,0 +1,17 @@
+2026-10-30T21:45:19 [INFO] base de datos: data/jobrunner.db
+2026-10-30T21:45:19 [INFO] recuperacion completada: 0 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-10-30T21:45:19 [INFO] JobRunner escuchando en /tmp/jobrunner-tc003.sock
+2026-10-30T21:45:19 [INFO] job=1 job recibido: sleep
+2026-10-30T21:45:19 [INFO] job=1 job en ejecucion (pid 68982)
+2026-10-30T21:45:21 [INFO] job=1 job finalizado (codigo 0)
+2026-10-30T21:45:22 [INFO] job=2 job recibido: false
+2026-10-30T21:45:22 [INFO] job=2 job en ejecucion (pid 69004)
+2026-10-30T21:45:22 [INFO] job=2 job finalizado (codigo 1)
+2026-10-30T21:45:23 [INFO] job=3 job recibido: sleep
+2026-10-30T21:45:23 [INFO] job=3 job en ejecucion (pid 69021)
+2026-10-30T21:45:24 [INFO] job=3 job finalizado (codigo -1)
+2026-10-30T21:45:26 [INFO] job=4 job recibido: sleep
+2026-10-30T21:45:26 [INFO] job=4 job en ejecucion (pid 69088)
+2026-10-30T21:45:26 [INFO] job=4 job finalizado (codigo -1)
+2026-10-30T21:45:26 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-10-30T21:45:26 [INFO] JobRunner detenido

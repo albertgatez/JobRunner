@@ -246,6 +246,7 @@ TEST_CASE("kill_live_processes escala a SIGKILL solo los que siguen vivos",
 
     manager.begin_shutdown();
     launcher.exit_child(0, -1, SIGTERM);
+    launcher.signals.clear();  // el SIGKILL al grupo del lider que termino es de INC-02
     manager.kill_live_processes();
 
     CHECK_FALSE(launcher.signaled(obediente, SIGKILL));

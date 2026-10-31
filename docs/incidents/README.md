@@ -33,6 +33,6 @@ registro es para incidentes de operación/revisión.
 | [INC-01 — Proceso zombie](01-proceso-zombie.md) | EN INVESTIGACIÓN | Prueba de regresión |
 | [INC-02 — Jobs huérfanos al apagar](02-jobs-huerfanos-al-apagar.md) | CERRADO | Nada |
 | [INC-03 — Sockets heredados por los jobs](03-sockets-heredados-por-jobs.md) | EN INVESTIGACIÓN | Corrección y prueba de regresión |
-| [INC-04 — Pruebas rotas en `main`](04-pruebas-rotas-en-main.md) | EN INVESTIGACIÓN | Subir las pruebas faltantes |
+| [INC-04 — Pruebas rotas en `main`](04-pruebas-rotas-en-main.md) | CERRADO | Nada |
 | [INC-05 — `Makefile` con espacios](05-makefile-sin-tabuladores.md) | EN INVESTIGACIÓN | Ejecutar `make` en `main` |
 | [INC-06 — Finales de línea mezclados](06-finales-de-linea-mezclados.md) | EN INVESTIGACIÓN | Decisión del equipo |

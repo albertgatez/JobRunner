@@ -1,0 +1,37 @@
+== TC-008 run-id=run-2026-10-30-tc008-2-correccion binarios=8c69e3f + corrección
+== Paso 1: fork falla con cupo libre
+respuesta: {
+  "job_id": 1,
+  "ok": true,
+  "was_duplicate": false
+}
+[OK]   el cliente recibe el id del job
+estado: FAILED, diagnóstico: no se pudo crear el proceso: fork: Resource temporarily unavailable
+[OK]   el job queda FAILED
+[OK]   el diagnóstico indica el fallo de fork
+[OK]   tiene finished_at
+[OK]   no tiene started_at
+[OK]   no queda en la lista de QUEUED
+reenvío inmediato: {
+  "job_id": 2,
+  "ok": true,
+  "was_duplicate": false
+}
+[OK]   el reenvío crea un job nuevo, no un duplicado
+[OK]   el reenvío no se marca como duplicado
+[OK]   al recuperarse el sistema, un job nuevo funciona
+== Paso 2: fork falla al despachar desde la cola
+jobs: 1 (en ejecución), 2 y 3 (en cola)
+[OK]   los dos últimos están en cola
+[OK]   el servidor sigue vivo
+[OK]   el job en ejecución terminó bien
+estados en cola tras el fallo: FAILED FAILED
+[OK]   los jobs de la cola quedan FAILED
+[OK]   con diagnóstico
+[OK]   el cupo no quedó ocupado: un job nuevo funciona
+== Paso 3: fork falla durante la recuperación al arrancar
+[OK]   hay un job en cola antes del cierre
+[OK]   el servidor arranca aunque no pueda crear procesos
+[OK]   el job de la cola queda FAILED
+== Comprobaciones ejecutadas: 18 (esperadas: 18) | fallos: 0
+RESULTADO TC-008: PASS

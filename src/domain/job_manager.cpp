@@ -1,12 +1,14 @@
 #include "./job_manager.hpp"
 #include <algorithm>
 #include <csignal>
+#include <exception>
 
 namespace jobrunner {
 
 namespace {
 constexpr const char* kInterruptedDiagnostic = "interrumpido por reinicio del servicio";
 constexpr const char* kShutdownDiagnostic = "cancelado por cierre del servicio";
+constexpr const char* kLaunchFailedDiagnostic = "no se pudo crear el proceso";
 }  // namespace
 
 // Calcula hash para deduplicacion por comando/args/origen.
@@ -100,14 +102,22 @@ void JobManager::dispatch(JobId id) {
     auto job = store_.get(id);
     if (!job || job->state != JobState::Queued) return;
 
-    pid_t pid = launcher_.launch(
-        job->command, job->args,
-        [this, id](pid_t /*pid*/, bool is_stderr, std::string_view data) {
-            on_child_output(id, is_stderr, data);
-        },
-        [this, id](pid_t /*pid*/, int exit_code, int term_signal) {
-            on_child_exit(id, exit_code, term_signal);
-        });
+    pid_t pid = -1;
+    try {
+        pid = launcher_.launch(
+            job->command, job->args,
+            [this, id](pid_t /*pid*/, bool is_stderr, std::string_view data) {
+                on_child_output(id, is_stderr, data);
+            },
+            [this, id](pid_t /*pid*/, int exit_code, int term_signal) {
+                on_child_exit(id, exit_code, term_signal);
+            });
+    } catch (const std::exception& e) {
+        // Se despacha desde submit, on_child_exit y recover: un fallo de un
+        // job no debe llegar hasta el event loop ni tumbar el servidor (RNF-09).
+        on_launch_failed(id, e.what());
+        return;
+    }
 
     auto fingerprint = launcher_.fingerprint(pid);
     store_.update(id, [pid, &fingerprint](Job& j) {
@@ -121,6 +131,21 @@ void JobManager::dispatch(JobId id) {
     });
     live_processes_[id] = pid;
     logger_.info("job en ejecucion (pid " + std::to_string(pid) + ")", id);
+}
+
+// Marca FAILED un job cuyo proceso no se pudo crear (RF-29) y lo retira de la
+// ventana de duplicados para no bloquear un reenvio legitimo (RF-27).
+// id: identificador del job.
+// reason: causa del fallo.
+void JobManager::on_launch_failed(JobId id, const std::string& reason) {
+    const std::string diagnostic = std::string(kLaunchFailedDiagnostic) + ": " + reason;
+    store_.update(id, [&diagnostic](Job& j) {
+        j.transition_to(JobState::Failed);
+        j.finished_at = Clock::now();
+        j.diagnostic = diagnostic;
+    });
+    logger_.error(diagnostic, id);
+    std::erase_if(recent_submissions_, [id](const auto& entry) { return entry.second.first == id; });
 }
 
 // Si hay cupo libre y jobs en cola, despacha el mas antiguo (FIFO).

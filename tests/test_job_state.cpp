@@ -32,11 +32,9 @@ TEST_CASE("to_string devuelve el nombre de cada estado", "[state][TC-003]") {
 TEST_CASE("Transiciones permitidas desde QUEUED", "[state][TC-003]") {
     CHECK(is_valid_transition(JobState::Queued, JobState::Running));
     CHECK(is_valid_transition(JobState::Queued, JobState::Canceled));
+    CHECK(is_valid_transition(JobState::Queued, JobState::Failed));  // fallo de fork/pipe (RF-29)
     CHECK_FALSE(is_valid_transition(JobState::Queued, JobState::Queued));
     CHECK_FALSE(is_valid_transition(JobState::Queued, JobState::Succeeded));
-    // QUEUED -> FAILED hoy no existe; se necesitará al manejar el fallo de
-    // fork/pipe (RF-29). Al agregarla, mover esta aserción a las permitidas.
-    CHECK_FALSE(is_valid_transition(JobState::Queued, JobState::Failed));
 }
 
 TEST_CASE("Transiciones permitidas desde RUNNING", "[state][TC-003]") {

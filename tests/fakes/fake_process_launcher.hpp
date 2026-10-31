@@ -3,6 +3,7 @@
 #include <csignal>
 #include <functional>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -26,6 +27,10 @@ class FakeProcessLauncher : public IProcessLauncher {
 
     pid_t launch(const std::string& command, const std::vector<std::string>& args,
                  OutputCallback on_output, ExitCallback on_exit) override {
+        if (fail_next_launches > 0) {
+            --fail_next_launches;
+            throw std::runtime_error("fork: Resource temporarily unavailable");
+        }
         pid_t pid = next_pid_++;
         launches.push_back({command, args, pid, std::move(on_output), std::move(on_exit)});
         return pid;
@@ -75,6 +80,9 @@ class FakeProcessLauncher : public IProcessLauncher {
     }
 
     std::vector<PendingTimer> timers;
+
+    // Cantidad de lanzamientos siguientes que fallan como fork/pipe.
+    int fail_next_launches{0};
 
     // --- Ayudas para la prueba ---------------------------------------------
     void emit_output(std::size_t index, bool is_stderr, const std::string& data) {

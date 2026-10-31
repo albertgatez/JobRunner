@@ -135,6 +135,14 @@ class JobManager {
     void dispatch(JobId id);
 
     /**
+     * Marca FAILED un job cuyo proceso no se pudo crear y lo retira de la
+     * ventana de deduplicacion.
+     * @param id Identificador del job.
+     * @param reason Causa del fallo.
+     */
+    void on_launch_failed(JobId id, const std::string& reason);
+
+    /**
      * Si hay cupo libre y jobs en cola, despacha el mas antiguo (FIFO).
      */
     void dispatch_next_queued();

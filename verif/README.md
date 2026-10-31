@@ -98,6 +98,7 @@ Para que cuente como evidencia en la matriz, ejecuta los scripts sobre el commit
 | TC-001 Envío de Jobs y solicitudes inválidas | PASS | `verif/scripts/tc-001.sh` |
 | TC-002 Límite de concurrencia y cola | PASS | `verif/scripts/tc-002.sh` |
 | TC-003 Estados, tiempos y código de salida | PASS | `verif/scripts/tc-003.sh` |
+| TC-008 Aislamiento de fallo: error al crear el proceso | PASS | `verif/scripts/tc-008.sh` |
 | TC-009 Cierre controlado sin procesos huérfanos | PASS (15/15) | `verif/scripts/tc-009.sh` |
 
 TC-009 tiene evidencia en `verif/results/run-2026-10-30-inc02-3-correccion/` y `verif/results/run-2026-10-30-inc02-4-carpeta-de-trabajo/`. El caso formal está descrito en [`test-cases/TC-009.md`](test-cases/TC-009.md).

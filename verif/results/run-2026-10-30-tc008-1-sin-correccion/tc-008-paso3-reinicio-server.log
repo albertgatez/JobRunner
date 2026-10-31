@@ -1,0 +1,4 @@
+2026-10-30T21:41:41 [INFO] base de datos: /tmp/tmp.Qmv6i6S8bD/jobrunner.db
+2026-10-30T21:41:41 [INFO] job=2 job reencolado tras reinicio
+2026-10-30T21:41:41 [INFO] recuperacion completada: 1 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+jobrunner-server: error fatal: fork: Resource temporarily unavailable

@@ -20,6 +20,7 @@ stateDiagram-v2
     [*] --> QUEUED: submit
     QUEUED --> RUNNING: dispatch (se lanza el proceso)
     QUEUED --> CANCELED: cancel
+    QUEUED --> FAILED: no se pudo crear el proceso
     RUNNING --> SUCCEEDED: el proceso termina con código 0
     RUNNING --> FAILED: código distinto de 0 o terminado por señal
     RUNNING --> CANCELED: cancel
@@ -37,6 +38,7 @@ La función `is_valid_transition()` (`job.cpp`) es la única fuente de verdad. C
 | (nuevo) | `QUEUED` | `submit` | `IJobStore::create` (`SqliteJobStore` en el servidor) |
 | `QUEUED` | `RUNNING` | `JobManager::dispatch` tras lanzar el proceso | `job_manager.cpp` (`dispatch`) |
 | `QUEUED` | `CANCELED` | `JobManager::cancel` | `job_manager.cpp` (`cancel`) |
+| `QUEUED` | `FAILED` | Fallo al crear el proceso (`fork` o `pipe`) | `job_manager.cpp` (`on_launch_failed`) |
 | `RUNNING` | `SUCCEEDED` | Terminación del proceso con código 0 y sin señal | `job_manager.cpp` (`on_child_exit`) |
 | `RUNNING` | `FAILED` | Terminación con código distinto de 0 o por señal | `job_manager.cpp` (`on_child_exit`) |
 | `RUNNING` | `CANCELED` | `JobManager::cancel` (envía `SIGTERM` al grupo de procesos) | `job_manager.cpp` (`cancel`) |

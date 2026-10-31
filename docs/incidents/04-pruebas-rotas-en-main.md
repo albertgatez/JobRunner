@@ -5,8 +5,8 @@
 - Evidencia recolectada (antes de modificar): `git cat-file` no encuentra los archivos en `80cf42d` ni en `origin/Alberto`, y `git check-ignore` no los marca.
 - Hipótesis:
   1. Git ignora los archivos. **Descartada.**
-  2. No se incluyeron en el commit `403e652`. **Probable:** falta confirmar si existen en el equipo de quien lo hizo.
+  2. No se incluyeron en el commit `403e652`. **Confirmada:** llegaron después, en `32808ca`.
 - Causa raíz: `403e652` declaró pruebas sin versionarlas y añadió métodos a `IProcessLauncher` sin actualizar `FakeProcessLauncher`. No hay integración continua que lo detecte.
-- Corrección / mitigación / aceptación de riesgo: **sin corregir en `main`.** Para compilar el servidor y el cliente: `cmake -S . -B build -DJOBRUNNER_BUILD_TESTS=OFF` (comprobado). Los cambios locales sin commit ya actualizan `FakeProcessLauncher`; siguen faltando los tres archivos.
-- Prueba de regresión añadida: ninguna. Propuesta: un flujo de integración continua que compile y ejecute `ctest` en cada PR.
-- Estado: EN INVESTIGACIÓN
+- Corrección / mitigación / aceptación de riesgo: **corregido.** `32808ca` (PR #59) añadió los tres archivos y `eab887d` actualizó `FakeProcessLauncher`. Al integrarlos, `kill_live_processes escala a SIGKILL solo los que siguen vivos` falló porque no contemplaba el `SIGKILL` de INC-02; se ajustó la prueba sin cambiar lo que comprueba.
+- Prueba de regresión añadida: la propia suite, que compila y se ejecuta con `ctest`. Sigue sin haber integración continua que lo compruebe en cada PR.
+- Estado: CERRADO
