@@ -83,10 +83,22 @@ if(JOBRUNNER_BUILD_TESTS)
     tests/test_launch_failure.cpp
     tests/test_sqlite_job_store.cpp
     tests/test_recovery.cpp
-    tests/test_orphan_termination.cpp)
-  target_link_libraries(jobrunner_tests PRIVATE jobrunner_core Catch2::Catch2WithMain)
+    tests/test_orphan_termination.cpp
+    tests/domain/in_memory_job_store_test.cpp
+    tests/protocol/frame_codec_test.cpp
+    tests/server/request_handler_test.cpp
+    tests/network/connection_test.cpp
+    tests/process/posix_process_launcher_test.cpp)
+  # "domain/...", "fakes/..." y "support/..." se incluyen desde src/ y tests/.
+  target_include_directories(jobrunner_tests PRIVATE src tests)
+  find_package(Threads REQUIRED)
+  target_link_libraries(jobrunner_tests PRIVATE
+    jobrunner_core Catch2::Catch2WithMain Threads::Threads)
 
   include(Catch)
-  catch_discover_tests(jobrunner_tests)
+  # Cada TEST_CASE corre en su propio proceso: Reactor bloquea senales con
+  # sigprocmask y una prueba no debe contaminar a otra. El TIMEOUT evita que
+  # una regresion (p. ej. un hijo que ignora SIGTERM) cuelgue la suite.
+  catch_discover_tests(jobrunner_tests PROPERTIES TIMEOUT 30)
 
 endif()
