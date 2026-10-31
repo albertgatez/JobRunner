@@ -111,6 +111,7 @@ TEST_CASE("TC-002: cancelar un Job en cola no lanza ningún proceso", "[queue][T
     CHECK(f.manager.cancel(ids[kJobs - 1]));
 
     CHECK(f.manager.status(ids[kJobs - 1])->state == JobState::Canceled);
+    CHECK(f.manager.status(ids[kJobs - 1])->finished_at.has_value());
     CHECK(f.launcher.launches.size() == launched_before);
     CHECK(f.launcher.signals.empty());  // no hay proceso al que enviar señales
 }
