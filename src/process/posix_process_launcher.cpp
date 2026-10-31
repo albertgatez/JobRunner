@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/prctl.h>
+#include <sys/timerfd.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -110,6 +111,15 @@ bool still_running(const OrphanMember& m) {
 PosixProcessLauncher::PosixProcessLauncher(Reactor& reactor) : reactor_(reactor) {
     reactor_.on_signal(SIGCHLD,
                         [this](const struct signalfd_siginfo&) { reap_exited_children(); });
+}
+
+// Cierra temporizadores que hayan quedado pendientes sin disparar su
+// callback (puede capturar un `this` de JobManager que ya no exista).
+PosixProcessLauncher::~PosixProcessLauncher() {
+    for (auto& [id, timer] : timers_) {
+        reactor_.remove(timer.fd);
+        close(timer.fd);
+    }
 }
 
 // Lanza un proceso hijo con captura de stdout/stderr.
@@ -288,6 +298,50 @@ std::size_t PosixProcessLauncher::terminate_orphan_group(pid_t pgid,
         if (still_running(m)) ::kill(m.pid, SIGKILL);
     }
     return members.size();
+}
+
+// Programa on_fire con un timerfd de un solo disparo, registrado en el
+// Reactor como un descriptor legible mas (ADR-006: escalamiento de
+// cancelacion, sin bloquear el event loop).
+// delay: tiempo de espera antes de disparar.
+// on_fire: callback a ejecutar al expirar.
+TimerId PosixProcessLauncher::schedule_once(std::chrono::milliseconds delay,
+                                            std::function<void()> on_fire) {
+    int fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+    if (fd == -1) throw std::runtime_error("timerfd_create fallo");
+
+    struct itimerspec spec{};
+    spec.it_value.tv_sec = delay.count() / 1000;
+    spec.it_value.tv_nsec = (delay.count() % 1000) * 1'000'000;
+    timerfd_settime(fd, 0, &spec, nullptr);
+
+    TimerId id = next_timer_id_++;
+    timers_[id] = PendingTimer{fd, std::move(on_fire)};
+
+    reactor_.add_read(fd, [this, id] {
+        auto it = timers_.find(id);
+        if (it == timers_.end()) return;  // se cancelo entre que se armo y que disparo
+        std::uint64_t discard;
+        read(it->second.fd, &discard, sizeof(discard));  // obligatorio con timerfd
+        auto callback = std::move(it->second.on_fire);
+        int fd_to_close = it->second.fd;
+        timers_.erase(it);
+        reactor_.remove(fd_to_close);
+        close(fd_to_close);
+        callback();
+    });
+
+    return id;
+}
+
+// Cancela un temporizador pendiente sin disparar su callback.
+// id: identificador devuelto por schedule_once().
+void PosixProcessLauncher::cancel_timer(TimerId id) {
+    auto it = timers_.find(id);
+    if (it == timers_.end()) return;
+    reactor_.remove(it->second.fd);
+    close(it->second.fd);
+    timers_.erase(it);
 }
 
 }  // namespace jobrunner

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <csignal>
+#include <functional>
 #include <map>
 #include <string>
 #include <utility>
@@ -32,6 +33,45 @@ class FakeProcessLauncher : public IProcessLauncher {
 
     void send_signal(pid_t pid, int signal) override { signals.emplace_back(pid, signal); }
 
+    // Faltaban en el fake desde que IProcessLauncher creció con la
+    // recuperación (ADR-005). No se usan en las pruebas de cancelación, pero
+    // la clase debe dejar de ser abstracta para poder instanciarse.
+    std::optional<ProcessFingerprint> fingerprint(pid_t) const override { return std::nullopt; }
+    std::size_t terminate_orphan_group(pid_t, const ProcessFingerprint&) override { return 0; }
+
+    struct PendingTimer {
+        TimerId id{};
+        std::function<void()> on_fire;
+        bool cancelled{false};
+    };
+
+    TimerId schedule_once(std::chrono::milliseconds /*delay*/,
+                          std::function<void()> on_fire) override {
+        TimerId id = next_timer_id_++;
+        timers.push_back({id, std::move(on_fire), false});
+        return id;
+    }
+
+    void cancel_timer(TimerId id) override {
+        for (auto& t : timers) {
+            if (t.id == id) t.cancelled = true;
+        }
+    }
+
+    // Ayuda para la prueba: simula que el timeout expiro. Devuelve false si
+    // el temporizador no existe o ya se habia cancelado.
+    bool fire_timer(TimerId id) {
+        for (auto& t : timers) {
+            if (t.id == id && !t.cancelled) {
+                t.on_fire();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    std::vector<PendingTimer> timers;
+
     // --- Ayudas para la prueba ---------------------------------------------
     void emit_output(std::size_t index, bool is_stderr, const std::string& data) {
         auto& l = launches.at(index);
@@ -55,6 +95,7 @@ class FakeProcessLauncher : public IProcessLauncher {
 
    private:
     pid_t next_pid_{1000};
+    TimerId next_timer_id_{1};
 };
 
 }  // namespace jobrunner::testing
