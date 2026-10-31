@@ -42,6 +42,7 @@ json job_to_json(const Job& job) {
     if (job.finished_at) j["finished_at"] = to_iso8601(*job.finished_at);
     j["stdout"] = job.stdout_data;
     j["stderr"] = job.stderr_data;
+    if (!job.diagnostic.empty()) j["diagnostic"] = job.diagnostic;
     return j;
 }
 
@@ -52,17 +53,6 @@ std::string error_response(const std::string& message) {
     j["ok"] = false;
     j["error"] = message;
     return j.dump();
-}
-
-// Convierte estado textual a enum interno.
-// s: estado textual del request.
-std::optional<JobState> parse_state(const std::string& s) {
-    if (s == "QUEUED") return JobState::Queued;
-    if (s == "RUNNING") return JobState::Running;
-    if (s == "SUCCEEDED") return JobState::Succeeded;
-    if (s == "FAILED") return JobState::Failed;
-    if (s == "CANCELED") return JobState::Canceled;
-    return std::nullopt;
 }
 
 }  // namespace
@@ -127,7 +117,7 @@ std::string RequestHandler::handle(const std::string& request_json,
         if (op == "list") {
             std::optional<JobState> filter;
             if (request.contains("state") && request["state"].is_string()) {
-                filter = parse_state(request["state"].get<std::string>());
+                filter = parse_job_state(request["state"].get<std::string>());
                 if (!filter) {
                     return error_response("estado desconocido: " +
                                            request["state"].get<std::string>());

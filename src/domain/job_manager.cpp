@@ -4,6 +4,11 @@
 
 namespace jobrunner {
 
+namespace {
+constexpr const char* kInterruptedDiagnostic = "interrumpido por reinicio del servicio";
+constexpr const char* kShutdownDiagnostic = "cancelado por cierre del servicio";
+}  // namespace
+
 // Calcula hash para deduplicacion por comando/args/origen.
 // k: llave de deduplicacion.
 std::size_t JobManager::DedupKeyHash::operator()(const DedupKey& k) const {
@@ -37,7 +42,14 @@ SubmitResult JobManager::submit(const std::string& command,
                                  const std::vector<std::string>& args,
                                  const std::string& client_origin) {
     SubmitResult result;
-    
+
+    // RF-15: durante el cierre no se aceptan trabajos nuevos.
+    if (shutting_down_) {
+        result.accepted = false;
+        result.error_message = "el servicio se esta cerrando, no acepta trabajos nuevos";
+        return result;
+    }
+
     if (command.empty()) {
         result.accepted = false;
         result.error_message = "el comando no puede estar vacio";
@@ -57,7 +69,7 @@ SubmitResult JobManager::submit(const std::string& command,
     }
     // RF-25 / RNF-29: si no hay cupo y la cola ya esta llena, se rechaza
     // antes de crear el job. No queda registro ni id para la solicitud.
-    if (running_count_ >= max_concurrent_jobs_ && queue_.size() >= max_queue_size_) {
+    if (live_processes_.size() >= max_concurrent_jobs_ && queue_.size() >= max_queue_size_) {
         result.accepted = false;
         result.error_message = "cola llena (" + std::to_string(max_queue_size_) +
                                 " jobs en espera), intenta mas tarde";
@@ -71,7 +83,7 @@ SubmitResult JobManager::submit(const std::string& command,
 
     result.accepted = true;
     result.job_id = id;
-    if (running_count_ < max_concurrent_jobs_) {
+    if (live_processes_.size() < max_concurrent_jobs_) {
         dispatch(id);
     } else {
         queue_.push_back(id);
@@ -95,18 +107,24 @@ void JobManager::dispatch(JobId id) {
             on_child_exit(id, exit_code, term_signal);
         });
 
-    store_.update(id, [pid](Job& j) {
+    auto fingerprint = launcher_.fingerprint(pid);
+    store_.update(id, [pid, &fingerprint](Job& j) {
         j.transition_to(JobState::Running);
         j.started_at = Clock::now();
         j.pid = pid;
+        if (fingerprint) {
+            j.pid_start_time = fingerprint->start_time;
+            j.boot_id = fingerprint->boot_id;
+        }
     });
-    ++running_count_;
+    live_processes_[id] = pid;
     logger_.info("job en ejecucion (pid " + std::to_string(pid) + ")", id);
 }
 
 // Si hay cupo libre y jobs en cola, despacha el mas antiguo (FIFO).
 void JobManager::dispatch_next_queued() {
-    while (running_count_ < max_concurrent_jobs_ && !queue_.empty()) {
+    if (shutting_down_) return;  // la cola se conserva para el siguiente arranque
+    while (live_processes_.size() < max_concurrent_jobs_ && !queue_.empty()) {
         JobId next_id = queue_.front();
         queue_.pop_front();
         dispatch(next_id);
@@ -144,7 +162,7 @@ void JobManager::on_child_exit(JobId id, int exit_code, int term_signal) {
     logger_.info("job finalizado (codigo " + std::to_string(exit_code) + ")", id);
     // El cupo se libera hasta que el proceso realmente termino (ADR-003),
     // sin importar si el job ya estaba CANCELED mientras corria.
-    if (running_count_ > 0) --running_count_;
+    live_processes_.erase(id);
     dispatch_next_queued();
 }
 
@@ -179,6 +197,91 @@ bool JobManager::cancel(JobId id) {
     });
     return true;
 }
+
+// Reconstruye el estado tras un reinicio (ADR-005).
+RecoveryReport JobManager::recover() {
+    RecoveryReport report;
+    std::vector<Job> queued;
+
+    for (const Job& job : store_.list(std::nullopt)) {
+        if (job.state == JobState::Queued) {
+            queued.push_back(job);
+            continue;
+        }
+        if (job.state != JobState::Running) continue;  // terminal: historia, sin cambios
+
+        // El servidor anterior murio sin cerrar este job. Si su proceso (o
+        // algun hijo de su grupo) sigue vivo, ya nadie lee su salida ni lo
+        // espera: se termina, verificando antes que sea el mismo proceso.
+        std::size_t terminated = 0;
+        if (job.pid && job.pid_start_time) {
+            terminated = launcher_.terminate_orphan_group(
+                *job.pid, ProcessFingerprint{job.boot_id, *job.pid_start_time});
+        }
+        report.orphans_terminated += terminated;
+
+        store_.update(job.id, [](Job& j) {
+            j.transition_to(JobState::Failed);
+            j.finished_at = Clock::now();
+            j.diagnostic = kInterruptedDiagnostic;
+        });
+        ++report.interrupted;
+        logger_.info(std::string(kInterruptedDiagnostic) + ", marcado FAILED" +
+                         (terminated > 0 ? " (" + std::to_string(terminated) +
+                                               " proceso(s) huerfano(s) terminado(s))"
+                                         : ""),
+                     job.id);
+    }
+
+    // FIFO por hora de llegada; el id desempata (es creciente).
+    std::stable_sort(queued.begin(), queued.end(), [](const Job& a, const Job& b) {
+        return a.received_at < b.received_at;
+    });
+    for (const Job& job : queued) {
+        queue_.push_back(job.id);
+        logger_.info("job reencolado tras reinicio", job.id);
+    }
+    report.requeued = queued.size();
+
+    logger_.info("recuperacion completada: " + std::to_string(report.requeued) +
+                 " reencolado(s), " + std::to_string(report.interrupted) +
+                 " interrumpido(s), " + std::to_string(report.orphans_terminated) +
+                 " proceso(s) huerfano(s) terminado(s)");
+    dispatch_next_queued();
+    return report;
+}
+
+// Cancela los jobs en ejecucion y bloquea nuevas solicitudes.
+void JobManager::begin_shutdown() {
+    if (shutting_down_) return;
+    shutting_down_ = true;
+
+    for (const auto& [id, pid] : live_processes_) {
+        launcher_.send_signal(pid, SIGTERM);
+        store_.update(id, [](Job& j) {
+            if (j.state != JobState::Running) return;  // ya cancelado por un cliente
+            j.transition_to(JobState::Canceled);
+            j.finished_at = Clock::now();
+            j.diagnostic = kShutdownDiagnostic;
+        });
+        logger_.info(std::string(kShutdownDiagnostic) + " (SIGTERM al pid " +
+                         std::to_string(pid) + ")",
+                     id);
+    }
+}
+
+// Fuerza la terminacion de los procesos que ignoraron SIGTERM.
+void JobManager::kill_live_processes() {
+    for (const auto& [id, pid] : live_processes_) {
+        launcher_.send_signal(pid, SIGKILL);
+        logger_.info("el proceso no termino tras SIGTERM, enviando SIGKILL al pid " +
+                         std::to_string(pid),
+                     id);
+    }
+}
+
+// Indica si queda algun proceso por recolectar.
+bool JobManager::has_live_processes() const { return !live_processes_.empty(); }
 
 // Consulta un job por id.
 // id: identificador del job.

@@ -36,6 +36,23 @@ class PosixProcessLauncher : public IProcessLauncher {
       */
     void send_signal(pid_t pid, int signal) override;
 
+     /**
+      * Lee la huella del proceso desde /proc.
+      * @param pid Proceso a identificar.
+      * @return Huella o std::nullopt si el proceso no existe.
+      */
+    std::optional<ProcessFingerprint> fingerprint(pid_t pid) const override;
+
+     /**
+      * Envia SIGTERM a los miembros vivos del grupo, espera un periodo de
+      * gracia y escala a SIGKILL. Bloquea hasta kOrphanGracePeriod; solo se
+      * usa durante la recuperacion, antes de aceptar conexiones.
+      * @param pgid Grupo de procesos del job.
+      * @param leader Huella registrada del lider.
+      * @return Cantidad de procesos terminados.
+      */
+    std::size_t terminate_orphan_group(pid_t pgid, const ProcessFingerprint& leader) override;
+
    private:
     struct ChildInfo {
         int stdout_fd{-1};

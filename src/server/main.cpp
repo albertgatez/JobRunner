@@ -1,14 +1,20 @@
 // Es el "compositor" de la arquitectura: conecta dominio, I/O, red y procesos en un único hilo de control.
 
+#include <algorithm>     // std::min
+#include <chrono>        // Plazos del cierre controlado
 #include <csignal>       // Necesario para SIGINT/SIGTERM y signalfd_siginfo
-#include <cstdlib>       // EXIT_SUCCESS
+#include <cstdlib>       // EXIT_SUCCESS / EXIT_FAILURE
+#include <exception>     // std::exception
+#include <filesystem>    // Crear el directorio de datos
 #include <iostream>      // std::cerr (por si falla el logger)
 #include <memory>        // std::shared_ptr
 #include <string>        // std::string
+#include <string_view>   // Comparación de argumentos
 #include <unordered_map> // Mapa fd→Connection
+#include <vector>        // Argumentos posicionales
 
 #include "../common/logger.hpp"                     // Logger single-threaded
-#include "../domain/in_memory_job_store.hpp"        // Persistencia en memoria
+#include "../domain/sqlite_job_store.hpp"           // Persistencia en SQLite (ADR-004)
 #include "../domain/job_manager.hpp"                // Orquestador de jobs
 #include "../io/reactor.hpp"                        // Event loop (epoll+signalfd)
 #include "../network/connection.hpp"                // Conexión por cliente
@@ -18,14 +24,82 @@
 
 using namespace jobrunner;
 
-int main(int argc, char** argv) {
-    std::string socket_path = "/tmp/jobrunner.sock";
-    if (argc > 1) socket_path = argv[1];
+namespace {
 
-    // Límite de jobs simultáneos (RF-05). Argumento opcional;
-    // por defecto 3. Ejemplo: ./jobrunner-server /tmp/jobrunner.sock 3
-    std::size_t max_concurrent_jobs = 3;
-    if (argc > 2) max_concurrent_jobs = std::stoul(argv[2]);
+// Plazo que tienen los jobs para atender el SIGTERM del cierre controlado
+// antes de escalar a SIGKILL (mismo valor propuesto en ADR-006), y plazo
+// extra para recolectarlos tras el SIGKILL.
+constexpr std::chrono::seconds kShutdownGracePeriod{5};
+constexpr std::chrono::seconds kKillGracePeriod{1};
+
+// Configuración de arranque leída de la línea de comandos.
+struct ServerOptions {
+    std::string socket_path = "/tmp/jobrunner.sock";
+    std::size_t max_concurrent_jobs = 3;   // RF-05
+    std::string data_dir = "data";         // RF-16: aquí vive jobrunner.db
+    bool reset_db = false;                 // Borrar el historial al arrancar
+};
+
+// Muestra la ayuda de uso del servidor.
+// out: flujo de salida.
+void print_usage(std::ostream& out) {
+    out << "uso: jobrunner-server [socket] [max_concurrentes] [opciones]\n"
+           "\n"
+           "  socket              ruta del socket Unix (por defecto /tmp/jobrunner.sock)\n"
+           "  max_concurrentes    jobs ejecutándose a la vez (por defecto 3)\n"
+           "\n"
+           "opciones:\n"
+           "  --data-dir DIR      directorio de datos; la base es DIR/jobrunner.db\n"
+           "                      (por defecto ./data)\n"
+           "  --reset-db          borra todos los registros de la base antes de arrancar\n"
+           "  -h, --help          muestra esta ayuda\n";
+}
+
+// Interpreta argv. Los argumentos posicionales conservan el orden de Hito 1
+// (socket, límite de concurrencia); las opciones con "--" van en cualquier lugar.
+// Lanza std::invalid_argument ante un argumento desconocido o incompleto.
+ServerOptions parse_options(int argc, char** argv) {
+    ServerOptions opts;
+    std::vector<std::string> positional;
+    for (int i = 1; i < argc; ++i) {
+        std::string_view arg = argv[i];
+        if (arg == "--reset-db") {
+            opts.reset_db = true;
+        } else if (arg == "--data-dir") {
+            if (i + 1 >= argc) throw std::invalid_argument("--data-dir requiere un directorio");
+            opts.data_dir = argv[++i];
+        } else if (arg.starts_with("-")) {
+            throw std::invalid_argument("opción desconocida: " + std::string(arg));
+        } else {
+            positional.emplace_back(arg);
+        }
+    }
+    if (positional.size() > 2) throw std::invalid_argument("demasiados argumentos");
+    if (positional.size() > 0) opts.socket_path = positional[0];
+    if (positional.size() > 1) opts.max_concurrent_jobs = std::stoul(positional[1]);
+    return opts;
+}
+
+// Mantiene vivo el event loop hasta que todos los jobs terminen o venza el
+// plazo, para que el SIGCHLD de cada uno se recolecte (sin zombies).
+// reactor: event loop ya detenido con stop().
+// manager: dueño del conteo de procesos vivos.
+// grace: tiempo máximo de espera.
+void drain_live_processes(Reactor& reactor, const JobManager& manager,
+                          std::chrono::milliseconds grace) {
+    using namespace std::chrono;
+    const auto deadline = steady_clock::now() + grace;
+    while (manager.has_live_processes()) {
+        auto remaining = duration_cast<milliseconds>(deadline - steady_clock::now());
+        if (remaining.count() <= 0) return;
+        reactor.poll_once(static_cast<int>(std::min<long long>(remaining.count(), 100)));
+    }
+}
+
+// Arranca y ejecuta el servidor hasta el cierre controlado.
+// opts: configuración de arranque.
+int run_server(const ServerOptions& opts) {
+    const std::string& socket_path = opts.socket_path;
 
     // Instancia el logger del sistema. Es single-threaded por diseño:
     // todo el servidor corre en un solo hilo (el Reactor), así que no
@@ -35,12 +109,20 @@ int main(int argc, char** argv) {
     // del ciclo de vida de los jobs (submit, exit, error, etc.).
     Logger logger;
 
-    // Implementación de IJobStore respaldada por un std::map<JobId, Job>
-    // en memoria. No requiere locks (single-threaded). Es reemplazable
-    // por SqliteJobStore (Hito 2) sin tocar JobManager, gracias a la
-    // inyección de dependencias. Contiene todos los jobs con su estado,
-    // timestamps, PIDs y capturas de stdout/stderr.
-    InMemoryJobStore store;
+    // Implementación de IJobStore respaldada por SQLite (ADR-004): una fila
+    // por job en DATA_DIR/jobrunner.db, una transacción por actualización.
+    // Reemplaza a InMemoryJobStore sin tocar JobManager (inyección de
+    // dependencias). Falla al arrancar si otra instancia ya usa la base.
+    // Con --reset-db se borra el historial antes de recuperar nada.
+    std::filesystem::create_directories(opts.data_dir);
+    const std::string db_path = opts.data_dir + "/jobrunner.db";
+    SqliteJobStore store(db_path);
+    logger.info("base de datos: " + db_path);
+    if (opts.reset_db) {
+        std::size_t removed = store.reset();
+        logger.info("base de datos reiniciada (--reset-db): " + std::to_string(removed) +
+                    " registro(s) eliminado(s)");
+    }
 
     // El corazón del sistema: event loop single-threaded basado en
     // epoll(7) + signalfd(2). Maneja:
@@ -67,7 +149,13 @@ int main(int argc, char** argv) {
     // (ventana de 3 segundos por cliente), transiciones de estado,
     // captura de salida y cancelación. Es el único punto que conoce
     // el ciclo de vida completo de un job.
-    JobManager manager(store, launcher, logger, max_concurrent_jobs);
+    JobManager manager(store, launcher, logger, opts.max_concurrent_jobs);
+
+    // Recuperación (ADR-005), antes de aceptar conexiones: los RUNNING de
+    // una instancia anterior que murió de forma abrupta pasan a FAILED
+    // (terminando su proceso si sigue vivo y es el mismo), y los QUEUED
+    // vuelven a la cola en orden de llegada.
+    manager.recover();
 
     // Capa de traducción JSON ↔ JobManager. Recibe el manager. 
     // Expone handle(json, origin) que interpreta las
@@ -115,9 +203,8 @@ int main(int argc, char** argv) {
     //      (no se aceptan conexiones nuevas, pero las existentes
     //       pueden terminar sus requests en vuelo)
     //   3. reactor.stop() → desbloquea epoll_wait y sale del event loop
-    // Esto detiene la aceptación de trabajos nuevos y el event loop.
-    // OJO: no espera ni termina los jobs en ejecución; pueden quedar
-    // huérfanos (pendiente, RNF-30).
+    // Esto detiene la aceptación de trabajos nuevos y el event loop; los
+    // jobs en ejecución se cancelan después de run() (ver más abajo).
     reactor.on_signal(SIGINT, [&](const struct signalfd_siginfo&) {
         logger.info("señal de apagado recibida, dejando de aceptar trabajos nuevos");
         listener.stop_accepting();
@@ -147,17 +234,59 @@ int main(int argc, char** argv) {
     reactor.run();
 
     // Se alcanza solo después de un shutdown controlado (SIGINT/SIGTERM).
-    // Loguea que el event loop terminó y el servidor se detuvo limpiamente.
+    // Cierre sin huérfanos (RF-15, RNF-30):
+    //   1. begin_shutdown(): los jobs RUNNING pasan a CANCELED (con
+    //      finished_at) y reciben SIGTERM; se rechazan solicitudes nuevas
+    //      de clientes ya conectados y la cola deja de despacharse. Los
+    //      QUEUED se quedan así en la base y se reencolan al volver a arrancar.
+    //   2. Se sigue girando el event loop hasta que todos terminen, para
+    //      recolectarlos con waitpid y guardar su salida final.
+    //   3. Si alguno ignora SIGTERM durante el plazo, se escala a SIGKILL.
+    manager.begin_shutdown();
+    drain_live_processes(reactor, manager, kShutdownGracePeriod);
+    if (manager.has_live_processes()) {
+        manager.kill_live_processes();
+        drain_live_processes(reactor, manager, kKillGracePeriod);
+    }
+    if (manager.has_live_processes()) {
+        logger.error("quedaron procesos sin recolectar al cerrar el servidor");
+    }
+
+    // Loguea que el servidor se detuvo limpiamente.
     logger.info("JobRunner detenido");
 
     // Retorna 0 al SO. En este punto:
     //   • El listener ya no acepta conexiones (stop_accepting)
     //   • Todas las Connection se destruyen (fin del scope)
     //   • Los shared_ptr<Connection> en connections se liberan
-    //   • Los destructores de cada módulo liberan recursos (fds, etc.)
-    // Los jobs en ejecución NO se terminan aquí: cada uno tiene su propio
-    // grupo de procesos y no recibe SIGHUP al cerrar el servidor, así que
-    // pueden quedar huérfanos. Pendiente (RNF-30): enviar SIGTERM a los
-    // jobs actibos y esperarlos antes de salir.
+    //   • Los destructores de cada módulo liberan recursos (fds, base, etc.)
     return EXIT_SUCCESS;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    ServerOptions opts;
+    try {
+        if (argc > 1 && (std::string_view(argv[1]) == "-h" ||
+                         std::string_view(argv[1]) == "--help")) {
+            print_usage(std::cout);
+            return EXIT_SUCCESS;
+        }
+        opts = parse_options(argc, argv);
+    } catch (const std::exception& e) {
+        std::cerr << "jobrunner-server: " << e.what() << "\n\n";
+        print_usage(std::cerr);
+        return EXIT_FAILURE;
+    }
+
+    // Errores de arranque (base bloqueada por otra instancia, esquema
+    // incompatible, socket ocupado...) terminan el proceso con un mensaje
+    // claro en lugar de un std::terminate.
+    try {
+        return run_server(opts);
+    } catch (const std::exception& e) {
+        std::cerr << "jobrunner-server: error fatal: " << e.what() << "\n";
+        return EXIT_FAILURE;
+    }
 }

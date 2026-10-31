@@ -24,7 +24,7 @@ El servidor (`jobrunner-server`) y el cliente de línea de comandos (`jobrunner-
 **Aún no implementado:** límite de concurrencia y cola, persistencia y recuperación tras reinicio, archivo de configuración, operación remota (LAN/VPN) y cierre del servidor sin procesos huérfanos. El detalle está en la sección *Limitations & Planned Features* del [manual de usuario](docs/user-guide/USER_MANUAL.md).
 
 ## Construcción
-**Requisitos:** Linux, compilador compatible con C++20 (`g++` o `clang++`) y la biblioteca de cabeceras [nlohmann/json](https://github.com/nlohmann/json).
+**Requisitos:** Linux, compilador compatible con C++20 (`g++` o `clang++`) la biblioteca de cabeceras [nlohmann/json](https://github.com/nlohmann/json) y las cabeceras de SQLite 3 (Fedora: `sqlite-devel`, Debian/Ubuntu: `libsqlite3-dev`; con CMake se descargan solas si faltan).
 
 Desde la raíz del repositorio (según el [manual de usuario](docs/user-guide/USER_MANUAL.md#installation)):
 
@@ -35,7 +35,7 @@ mkdir -p build
 g++ -std=c++20 -O2 \
   src/server/*.cpp src/common/*.cpp src/domain/*.cpp src/io/*.cpp \
   src/network/*.cpp src/process/*.cpp src/protocol/*.cpp \
-  -I/usr/include/nlohmann -o ./build/jobrunner-server
+  -I/usr/include/nlohmann -o ./build/jobrunner-server -lsqlite3
 
 # Cliente
 g++ -std=c++20 -O2 \
@@ -47,9 +47,11 @@ Si `nlohmann/json` no está en `/usr/include`, añade `-I<ruta>` hacia el direct
 
 ## Ejecución
 ```bash
-./build/jobrunner-server    # terminal 1 (socket por defecto: /tmp/jobrunner.sock)
+./build/jobrunner-server    # terminal 1 (socket por defecto: /tmp/jobrunner.sock, base en ./data/jobrunner.db)
 ./build/jobrunner-cli /tmp/jobrunner.sock submit echo hola  # terminal 2
 ./build/jobrunner-cli /tmp/jobrunner.sock status 1
 ```
+
+Opciones del servidor: `--data-dir DIR` (directorio de la base SQLite) y `--reset-db` (borra todo el historial al arrancar); ver `./build/jobrunner-server --help`.
 
 Todos los comandos (`submit`, `status`, `list`, `cancel`), los estados del trabajo y los códigos de salida del cliente están en el [manual de usuario](docs/user-guide/USER_MANUAL.md).
