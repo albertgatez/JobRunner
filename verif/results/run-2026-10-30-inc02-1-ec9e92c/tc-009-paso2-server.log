@@ -1,0 +1,5 @@
+2026-10-30T21:15:08 [INFO] JobRunner escuchando en /tmp/jobrunner-tc009.sock
+2026-10-30T21:15:08 [INFO] job=1 job recibido: bash
+2026-10-30T21:15:08 [INFO] job=1 job en ejecucion (pid 40457)
+2026-10-30T21:15:09 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-10-30T21:15:09 [INFO] JobRunner detenido

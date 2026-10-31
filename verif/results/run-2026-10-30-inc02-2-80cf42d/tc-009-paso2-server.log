@@ -1,0 +1,10 @@
+2026-10-30T21:16:32 [INFO] base de datos: /tmp/tmp.y0MEoHD17B/jobrunner.db
+2026-10-30T21:16:32 [INFO] recuperacion completada: 0 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-10-30T21:16:32 [INFO] JobRunner escuchando en /tmp/jobrunner-tc009.sock
+2026-10-30T21:16:32 [INFO] job=1 job recibido: bash
+2026-10-30T21:16:32 [INFO] job=1 job en ejecucion (pid 43858)
+2026-10-30T21:16:32 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-10-30T21:16:32 [INFO] job=1 cancelado por cierre del servicio (SIGTERM al pid 43858)
+2026-10-30T21:16:37 [INFO] job=1 el proceso no termino tras SIGTERM, enviando SIGKILL al pid 43858
+2026-10-30T21:16:37 [INFO] job=1 job finalizado (codigo -1)
+2026-10-30T21:16:37 [INFO] JobRunner detenido

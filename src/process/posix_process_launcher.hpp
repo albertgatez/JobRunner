@@ -19,6 +19,11 @@ class PosixProcessLauncher : public IProcessLauncher {
     explicit PosixProcessLauncher(Reactor& reactor);
 
      /**
+      * Cierra temporizadores pendientes sin disparar sus callbacks.
+      */
+    ~PosixProcessLauncher();
+
+     /**
       * Lanza un proceso hijo y enlaza callbacks.
       * @param command Ejecutable/comando a correr.
       * @param args Argumentos del comando.
@@ -53,12 +58,32 @@ class PosixProcessLauncher : public IProcessLauncher {
       */
     std::size_t terminate_orphan_group(pid_t pgid, const ProcessFingerprint& leader) override;
 
+     /**
+      * Programa on_fire con un timerfd no bloqueante registrado en el Reactor.
+      * @param delay Tiempo de espera antes de disparar.
+      * @param on_fire Callback a ejecutar al expirar.
+      * @return Identificador para cancelar el temporizador.
+      */
+    TimerId schedule_once(std::chrono::milliseconds delay,
+                          std::function<void()> on_fire) override;
+
+     /**
+      * Cancela un temporizador programado con schedule_once().
+      * @param id Identificador a cancelar.
+      */
+    void cancel_timer(TimerId id) override;
+
    private:
     struct ChildInfo {
         int stdout_fd{-1};
         int stderr_fd{-1};
         OutputCallback on_output;
         ExitCallback on_exit;
+    };
+
+    struct PendingTimer {
+        int fd{-1};
+        std::function<void()> on_fire;
     };
 
     /**
@@ -76,6 +101,8 @@ class PosixProcessLauncher : public IProcessLauncher {
 
     Reactor& reactor_;
     std::unordered_map<pid_t, ChildInfo> children_;
+    std::unordered_map<TimerId, PendingTimer> timers_;
+    TimerId next_timer_id_{1};
 };
 
 }  // namespace jobrunner

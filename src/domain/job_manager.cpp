@@ -27,12 +27,14 @@ std::size_t JobManager::DedupKeyHash::operator()(const DedupKey& k) const {
 // max_concurrent_jobs: limite de jobs ejecutandose a la vez.
 // max_queue_size: capacidad maxima de la cola antes de rechazar.
 JobManager::JobManager(IJobStore& store, IProcessLauncher& launcher, Logger& logger,
-                       std::size_t max_concurrent_jobs, std::size_t max_queue_size)
+                       std::size_t max_concurrent_jobs, std::size_t max_queue_size,
+                       std::chrono::milliseconds cancel_timeout)
     : store_(store),
       launcher_(launcher),
       logger_(logger),
       max_concurrent_jobs_(max_concurrent_jobs),
-      max_queue_size_(max_queue_size) {}
+      max_queue_size_(max_queue_size),
+      cancel_timeout_(cancel_timeout) {}
 
 // Crea, deduplica, encola o rechaza un job segun el cupo disponible.
 // command: comando solicitado.
@@ -162,7 +164,20 @@ void JobManager::on_child_exit(JobId id, int exit_code, int term_signal) {
     logger_.info("job finalizado (codigo " + std::to_string(exit_code) + ")", id);
     // El cupo se libera hasta que el proceso realmente termino (ADR-003),
     // sin importar si el job ya estaba CANCELED mientras corria.
-    live_processes_.erase(id);
+    auto live = live_processes_.find(id);
+    if (live != live_processes_.end()) {
+        // RNF-30 (INC-02): el lider ya termino, pero un subproceso de su grupo
+        // pudo ignorar SIGTERM. Al cerrar no debe sobrevivir ninguno.
+        if (shutting_down_) launcher_.send_signal(live->second, SIGKILL);
+        live_processes_.erase(live);
+    }
+    // Si el proceso termino por su cuenta (o atendio el SIGTERM) antes de
+    // que expirara el timeout de escalamiento, no hace falta mandar SIGKILL.
+    auto timer_it = escalation_timers_.find(id);
+    if (timer_it != escalation_timers_.end()) {
+        launcher_.cancel_timer(timer_it->second);
+        escalation_timers_.erase(timer_it);
+    }
     dispatch_next_queued();
 }
 
@@ -186,10 +201,22 @@ bool JobManager::cancel(JobId id) {
         return true;
     }
 
-    // Running: ask nicely first. Escalating to SIGKILL after a timeout is a
-    // Hito 2 addition (RF-30) — tracked as an open item, not implemented yet.
+    // Running: ask nicely first (SIGTERM). Si el proceso lo ignora, un
+    // temporizador no bloqueante escala a SIGKILL tras cancel_timeout_
+    // (ADR-006). El Job ya queda CANCELED aqui; el escalamiento solo decide
+    // como termina el proceso, no el estado que ve el cliente.
     if (job->pid) {
-        launcher_.send_signal(*job->pid, SIGTERM);
+        pid_t pid = *job->pid;
+        launcher_.send_signal(pid, SIGTERM);
+        escalation_timers_[id] = launcher_.schedule_once(cancel_timeout_, [this, id, pid] {
+            escalation_timers_.erase(id);
+            if (live_processes_.count(id)) {  // sigue vivo: ignoro el SIGTERM
+                launcher_.send_signal(pid, SIGKILL);
+                logger_.info("el proceso no termino tras SIGTERM, enviando SIGKILL al pid " +
+                                 std::to_string(pid),
+                             id);
+            }
+        });
     }
     store_.update(id, [](Job& j) {
         j.transition_to(JobState::Canceled);
