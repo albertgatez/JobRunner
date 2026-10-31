@@ -24,6 +24,15 @@ struct SubmitResult {
     bool was_duplicate{false};
     std::string error_message;
 };
+
+/**
+ * Resumen de la reconstruccion de estado al arrancar (ADR-005).
+ */
+struct RecoveryReport {
+    std::size_t requeued{0};            // QUEUED reinsertados en la cola
+    std::size_t interrupted{0};         // RUNNING marcados FAILED
+    std::size_t orphans_terminated{0};  // procesos de la instancia anterior terminados
+};
 // Orchestrates job submission and lifecycle, including the concurrency limit and the FIFO queue (ADR-003). This is the only class that knows JobRunner's business rules (validation, duplicate detection, cancellation) — it depends on IJobStore and IProcessLauncher as abstractions (DIP), so either can be swapped without touching this class (OCP), and it never touches JSON or sockets directly (SRP).
 /**
  * Orquesta envio, cola, ejecucion y cancelacion de jobs.
@@ -73,6 +82,34 @@ class JobManager {
       * @return true si el job existe; false si no existe.
       */
     bool cancel(JobId id);
+
+     /**
+      * Reconstruye el estado a partir del historial persistido (ADR-005):
+      * los RUNNING pasan a FAILED (terminando antes lo que quede vivo de su
+      * proceso), los QUEUED vuelven a la cola en orden de llegada y se
+      * despachan segun el cupo de esta instancia. Llamar una sola vez, antes
+      * de aceptar conexiones.
+      * @return Conteo de jobs reencolados, interrumpidos y procesos terminados.
+      */
+    RecoveryReport recover();
+
+     /**
+      * Inicia el cierre controlado (RF-15): rechaza solicitudes nuevas, deja
+      * de despachar la cola y cancela los jobs RUNNING enviandoles SIGTERM.
+      * Los QUEUED se conservan para reencolarse en el siguiente arranque.
+      */
+    void begin_shutdown();
+
+     /**
+      * Envia SIGKILL a los procesos que sigan vivos (fin del periodo de gracia).
+      */
+    void kill_live_processes();
+
+     /**
+      * Indica si queda algun proceso hijo sin terminar.
+      * @return true mientras haya procesos lanzados que no se han recolectado.
+      */
+    bool has_live_processes() const;
 
    private:
     struct DedupKey {
@@ -135,8 +172,11 @@ class JobManager {
 
     const std::size_t max_concurrent_jobs_;
     const std::size_t max_queue_size_;
-    std::size_t running_count_{0};
+    // Procesos realmente vivos (job -> pid); su tamano es el cupo ocupado.
+    // Un job CANCELED sigue aqui hasta que su proceso termina (ADR-003).
+    std::unordered_map<JobId, pid_t> live_processes_;
     std::deque<JobId> queue_;
+    bool shutting_down_{false};
 };
 
 }  // namespace jobrunner

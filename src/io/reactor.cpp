@@ -121,35 +121,38 @@ void Reactor::stop() { running_ = false; }
 // Ejecuta el loop principal de epoll.
 void Reactor::run() {
     running_ = true;
+    while (running_) poll_once(-1);
+}
+
+// Espera y despacha una tanda de eventos.
+// timeout_ms: espera maxima de epoll_wait.
+void Reactor::poll_once(int timeout_ms) {
     std::array<epoll_event, 64> events{};
+    int n = epoll_wait(epoll_fd_, events.data(), static_cast<int>(events.size()), timeout_ms);
+    if (n < 0) {
+        if (errno == EINTR) return;
+        throw_errno("epoll_wait");
+    }
 
-    while (running_) {
-        int n = epoll_wait(epoll_fd_, events.data(), static_cast<int>(events.size()), -1);
-        if (n < 0) {
-            if (errno == EINTR) continue;
-            throw_errno("epoll_wait");
+    for (int i = 0; i < n; ++i) {
+        int fd = events[i].data.fd;
+        auto it = fds_.find(fd);
+        if (it == fds_.end()) continue; // removed by an earlier callback this
+
+        bool hup_or_err = events[i].events & (EPOLLHUP | EPOLLERR);
+        bool writable = events[i].events & EPOLLOUT;
+        bool readable = events[i].events & EPOLLIN;
+
+        // Copy the callbacks out before invoking them: a callback may remove `fd` (e.g. a connection closing itself), which erases this very map entry. Invoking a *copy* means that erase can't pull the rug out from under the call we're currently making.
+        Callback readable_cb = it->second.on_readable;
+        Callback writable_cb = it->second.on_writable;
+
+        if (hup_or_err) {
+            if (readable_cb) readable_cb();
+            continue;
         }
-
-        for (int i = 0; i < n; ++i) {
-            int fd = events[i].data.fd;
-            auto it = fds_.find(fd);
-            if (it == fds_.end()) continue; // removed by an earlier callback this
-
-            bool hup_or_err = events[i].events & (EPOLLHUP | EPOLLERR);
-            bool writable = events[i].events & EPOLLOUT;
-            bool readable = events[i].events & EPOLLIN;
-
-            // Copy the callbacks out before invoking them: a callback may remove `fd` (e.g. a connection closing itself), which erases this very map entry. Invoking a *copy* means that erase can't pull the rug out from under the call we're currently making.
-            Callback readable_cb = it->second.on_readable;
-            Callback writable_cb = it->second.on_writable;
-
-            if (hup_or_err) {
-                if (readable_cb) readable_cb();
-                continue;
-            }
-            if (writable && writable_cb) writable_cb();
-            if (readable && is_registered(fd) && readable_cb) readable_cb(); // Re-check registration: the writable callback above may already have torn this fd down (e.g. a write error closed the connection), in which case calling the copied readable callback would operate on a now-destroyed object.
-        }
+        if (writable && writable_cb) writable_cb();
+        if (readable && is_registered(fd) && readable_cb) readable_cb(); // Re-check registration: the writable callback above may already have torn this fd down (e.g. a write error closed the connection), in which case calling the copied readable callback would operate on a now-destroyed object.
     }
 }
 

@@ -41,6 +41,7 @@ The server listens on a **Unix domain socket** (default: `/tmp/jobrunner.sock`).
 - Linux operating system
 - C++20-compatible compiler (`g++` or `clang++`)
 - [`nlohmann/json`](https://github.com/nlohmann/json) header library installed on your system
+- SQLite 3 development headers (Fedora: `sudo dnf install sqlite-devel`, Debian/Ubuntu: `sudo apt install libsqlite3-dev`). The CMake build downloads the official SQLite amalgamation automatically if they are missing.
 
 ### Build
 
@@ -57,7 +58,7 @@ g++ -std=c++20 -O2 \
   src/process/*.cpp \
   src/protocol/*.cpp \
   -I/usr/include/nlohmann \
-  -o ./build/jobrunner-server
+  -o ./build/jobrunner-server -lsqlite3
 
 # CLI client
 g++ -std=c++20 -O2 \
@@ -80,6 +81,29 @@ Open two terminal windows.
 ```
 
 The server prints log messages to stderr and runs in the foreground. Press `Ctrl+C` to shut it down gracefully.
+
+### Server options
+
+```bash
+./jobrunner-server [socket] [max_concurrent] [--data-dir DIR] [--reset-db]
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `socket` | `/tmp/jobrunner.sock` | Unix socket path |
+| `max_concurrent` | `3` | Jobs running at the same time; the rest wait in the queue |
+| `--data-dir DIR` | `./data` | Data directory. Job history is stored in `DIR/jobrunner.db` (SQLite) |
+| `--reset-db` | off | Deletes **all** job records before starting; job ids restart at 1 |
+| `-h`, `--help` | | Shows usage |
+
+Only one server can use a given data directory at a time; a second one exits with an error.
+
+### Persistence and restarts
+
+Job history (command, state, timestamps, exit code, stdout/stderr) is kept in SQLite and survives restarts.
+
+- **Controlled shutdown** (`Ctrl+C` or `kill <pid>`): jobs in `RUNNING` are canceled (`CANCELED`, with `finished_at` and `"diagnostic": "cancelado por cierre del servicio"`). Jobs that ignore `SIGTERM` for 5 s get `SIGKILL`. Jobs still in `QUEUED` stay queued and start when the server comes back.
+- **Abrupt termination** (`kill -9`, crash): the kernel kills each job's main process together with the server. On the next start, jobs that were `RUNNING` become `FAILED` with `"diagnostic": "interrumpido por reinicio del servicio"`, and any leftover process of theirs is terminated after checking it is really the same process. `QUEUED` jobs are queued again in arrival order.
 
 **Terminal 2 — Run client test commands:**
 

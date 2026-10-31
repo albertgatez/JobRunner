@@ -22,6 +22,17 @@ const char* to_string(JobState state) {
     return "UNKNOWN";
 }
 
+// Convierte texto de protocolo a estado enum.
+// text: estado serializado.
+std::optional<JobState> parse_job_state(std::string_view text) {
+    if (text == "QUEUED") return JobState::Queued;
+    if (text == "RUNNING") return JobState::Running;
+    if (text == "SUCCEEDED") return JobState::Succeeded;
+    if (text == "FAILED") return JobState::Failed;
+    if (text == "CANCELED") return JobState::Canceled;
+    return std::nullopt;
+}
+
 // Valida si una transicion de estado es legal.
 // from: estado actual.
 // to: estado objetivo.

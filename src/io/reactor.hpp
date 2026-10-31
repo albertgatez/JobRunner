@@ -62,6 +62,14 @@ class Reactor {
     void run();
 
     /**
+     * Espera eventos una sola vez y despacha los que esten listos.
+     * Permite seguir atendiendo pipes y SIGCHLD despues de stop(), p. ej.
+     * para recolectar los jobs durante el cierre controlado.
+     * @param timeout_ms Espera maxima en milisegundos (-1 = indefinida).
+     */
+    void poll_once(int timeout_ms);
+
+    /**
      * Solicita detener el bucle de eventos.
      */
     void stop();

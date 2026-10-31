@@ -1,8 +1,10 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <sys/types.h>
 #include <vector>
 
@@ -26,6 +28,13 @@ enum class JobState {
  * @return Estado serializado para salida/protocolo.
  */
 const char* to_string(JobState state);
+
+/**
+ * Convierte la representacion textual de un estado a su enum.
+ * @param text Estado serializado ("QUEUED", "RUNNING", ...).
+ * @return Estado correspondiente o std::nullopt si no es valido.
+ */
+std::optional<JobState> parse_job_state(std::string_view text);
 
 /**
  * Valida si una transicion de estado es legal.
@@ -54,8 +63,18 @@ struct Job {
 
     std::optional<pid_t> pid;  // set while Running
 
+    // Huella del proceso (ADR-005): el kernel puede reciclar un PID, pero no
+    // la pareja (boot_id, starttime de /proc/<pid>/stat). Permite reconocer,
+    // tras una caida del servidor, si un proceso vivo es realmente el de este job.
+    std::optional<std::uint64_t> pid_start_time;
+    std::string boot_id;
+
     std::string stdout_data;
     std::string stderr_data;
+
+    // Explicacion del servidor cuando el desenlace no lo decidio el proceso
+    // (p. ej. interrumpido por reinicio o cancelado por cierre del servicio).
+    std::string diagnostic;
 
     /**
      * Cambia el estado del job validando la transicion.

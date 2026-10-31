@@ -1,6 +1,9 @@
 CXX := g++
 CXXFLAGS := -std=c++20 -Wall -Wextra -pthread
 CPPFLAGS := -I$(CURDIR)/src
+# SQLite (ADR-004): requiere las cabeceras del sistema
+# (Fedora: sqlite-devel, Debian/Ubuntu: libsqlite3-dev).
+LDLIBS := -lsqlite3
 BUILD_DIR := $(CURDIR)/build
 
 SHARED_SRCS := \
@@ -8,6 +11,7 @@ SHARED_SRCS := \
     $(CURDIR)/src/domain/job.cpp \
     $(CURDIR)/src/domain/job_manager.cpp \
     $(CURDIR)/src/domain/in_memory_job_store.cpp \
+    $(CURDIR)/src/domain/sqlite_job_store.cpp \
     $(CURDIR)/src/io/reactor.cpp \
     $(CURDIR)/src/network/connection.cpp \
     $(CURDIR)/src/network/unix_socket_listener.cpp \
@@ -28,16 +32,16 @@ SERVER_BIN := $(BUILD_DIR)/jobrunner-server
 all: JuanPotrillo
 
 $(BUILD_DIR):
-    mkdir -p $(BUILD_DIR)
+	mkdir -p $(BUILD_DIR)
 
 JuanPotrillo: $(CLIENT_BIN) $(SERVER_BIN)
-    @echo "Compilacion completada: $(CLIENT_BIN) y $(SERVER_BIN)"
+	@echo "Compilacion completada: $(CLIENT_BIN) y $(SERVER_BIN)"
 
 $(CLIENT_BIN): $(CLIENT_SRCS) | $(BUILD_DIR)
-    $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CLIENT_SRCS) -o $@
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CLIENT_SRCS) -o $@ $(LDLIBS)
 
 $(SERVER_BIN): $(SERVER_SRCS) | $(BUILD_DIR)
-    $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(SERVER_SRCS) -o $@
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(SERVER_SRCS) -o $@ $(LDLIBS)
 
 clean:
-    rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR)
