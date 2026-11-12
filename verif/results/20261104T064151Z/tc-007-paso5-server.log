@@ -1,0 +1,9 @@
+2026-11-04T00:41:56 [INFO] base de datos: /tmp/tmp.rlG9uuNLJT/jobrunner.db
+2026-11-04T00:41:56 [INFO] job=10 job reencolado tras reinicio
+2026-11-04T00:41:56 [INFO] recuperacion completada: 1 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-11-04T00:41:56 [INFO] job=10 job en ejecucion (pid 21119)
+2026-11-04T00:41:56 [INFO] JobRunner escuchando en /tmp/jobrunner-tc007.sock
+2026-11-04T00:41:56 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-11-04T00:41:56 [INFO] job=10 cancelado por cierre del servicio (SIGTERM al pid 21119)
+2026-11-04T00:41:56 [INFO] job=10 job finalizado (codigo -1)
+2026-11-04T00:41:56 [INFO] JobRunner detenido

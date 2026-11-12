@@ -1,0 +1,4 @@
+status 1 con 107 Jobs: 7 ms
+status 53 con 107 Jobs: 8 ms
+status 107 con 107 Jobs: 9 ms
+list con 107 Jobs: 17 ms (informativo)

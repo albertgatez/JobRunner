@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# TC-008 — Aislamiento de fallo: error al crear el proceso de un Job (RNF-08, RNF-09).
-# Provoca fallos reales de fork() bajando RLIMIT_NPROC solo al servidor.
+# TC-008 — Aislamiento de fallo (RNF-08, RNF-09, RF-22, RF-29).
+# Pasos 1-3: fallos reales de fork() bajando RLIMIT_NPROC solo al servidor.
+# Paso 4: un Job muere por una señal sin afectar a los demás.
+# Paso 5: solicitudes inválidas y desconexiones del cliente.
 # Uso (desde la raíz): BUILD_DIR=build verif/scripts/tc-008.sh
 source "$(dirname "$0")/common.sh"
 SOCK="/tmp/jobrunner-tc008.sock"
@@ -96,7 +98,95 @@ check "el servidor arranca aunque no pueda crear procesos" test "$STARTED" -eq 0
 check "el job de la cola queda FAILED" test "$(job_field "$B" state)" = "FAILED"
 stop
 
-EXPECTED_CHECKS=18   # comprobaciones que ejecuta el script completo (si cambia, actualizar)
+echo "== Paso 4: la terminación anormal de un Job no afecta a los demás (RNF-09)"
+rm -f "$DATA_DIR"/*
+start paso4 3 || { echo "ERROR: el servidor no arrancó"; exit 2; }
+A=$(submit_id sleep 40); B=$(submit_id sleep 41); V=$(submit_id sleep 42); D=$(submit_id sleep 43); sleep 0.3
+PA=$(job_pid "sleep 40"); PB=$(job_pid "sleep 41"); PV=$(job_pid "sleep 42")
+echo "A=$A (pid $PA) B=$B (pid $PB) víctima=$V (pid $PV) en cola=$D"
+check "con 3 Jobs en ejecución, el cuarto queda en cola" test "$(job_field "$D" state)" = "QUEUED"
+kill -9 "$PV"; sleep 0.5
+echo "víctima tras kill -9: $(job_field "$V" state), exit_signal=$(job_field "$V" exit_signal)"
+check "el Job terminado con SIGKILL queda FAILED con exit_signal 9" test "$(job_field "$V" state)/$(job_field "$V" exit_signal)" = "FAILED/9"
+check "los otros Jobs siguen RUNNING con el mismo proceso" bash -c "[ '$(job_field "$A" state) $(job_field "$B" state)' = 'RUNNING RUNNING' ] && kill -0 $PA && kill -0 $PB"
+check "el Job en cola ocupa el cupo liberado" test "$(job_field "$D" state)" = "RUNNING"
+cli cancel "$D" >/dev/null; sleep 0.5
+SEG=$(submit_id sh -c 'kill -SEGV $$'); sleep 0.5
+echo "Job que se cae solo: $(job_field "$SEG" state), exit_signal=$(job_field "$SEG" exit_signal)"
+check "un Job que se cae solo (SIGSEGV) queda FAILED con exit_signal 11" test "$(job_field "$SEG" state)/$(job_field "$SEG" exit_signal)" = "FAILED/11"
+check "el servidor sigue vivo" alive
+check "A y B siguen RUNNING con el mismo proceso" bash -c "[ '$(job_field "$A" state) $(job_field "$B" state)' = 'RUNNING RUNNING' ] && kill -0 $PA && kill -0 $PB"
+stop
+
+# abuse <modo>: abre una conexión y la usa mal. Sale con 0 si el servidor
+# respondió lo esperado para ese modo (o si el modo no espera respuesta).
+abuse() {
+    python3 - "$SOCK" "$1" <<'PY'
+import json, socket, struct, sys, time
+path, mode = sys.argv[1], sys.argv[2]
+def frame(body): return struct.pack(">I", len(body)) + body
+def conn():
+    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM); s.settimeout(3); s.connect(path); return s
+def reply(s):
+    hdr = b""
+    while len(hdr) < 4:
+        chunk = s.recv(4 - len(hdr))
+        if not chunk: return None
+        hdr += chunk
+    n = struct.unpack(">I", hdr)[0]; data = b""
+    while len(data) < n: data += s.recv(n - len(data))
+    return json.loads(data)
+invalid = {
+    "json-malformado": b'{esto no es json',
+    "op-desconocida": b'{"op":"borrar","id":1}',
+    "id-no-numerico": b'{"op":"status","id":"abc"}',
+    "args-no-texto": b'{"op":"submit","command":"echo","args":[1,2]}',
+}
+if mode in invalid:
+    s = conn(); s.sendall(frame(invalid[mode])); r = reply(s)
+    print("  respuesta:", r); sys.exit(0 if r and r.get("ok") is False and r.get("error") else 1)
+if mode == "frame-gigante":
+    s = conn(); s.sendall(struct.pack(">I", (1 << 20) + 1))
+    try: closed = s.recv(1) == b""
+    except socket.timeout: closed = False
+    print("  el servidor cerró la conexión:", closed); sys.exit(0 if closed else 1)
+if mode == "frame-truncado":
+    s = conn(); s.sendall(struct.pack(">I", 100) + b'{"op":"li'); s.close(); sys.exit(0)
+if mode == "sin-enviar":
+    conn().close(); sys.exit(0)
+if mode == "cierra-antes-de-leer":
+    for _ in range(300):
+        s = conn(); s.sendall(frame(b'{"op":"list"}')); s.close()
+    sys.exit(0)
+if mode == "cierra-lectura":
+    s = conn(); s.shutdown(socket.SHUT_RD); s.sendall(frame(b'{"op":"list"}')); time.sleep(0.3); s.close(); sys.exit(0)
+sys.exit(2)
+PY
+}
+
+echo "== Paso 5: solicitudes inválidas y desconexiones no terminan el servicio (RNF-08, RF-22)"
+rm -f "$DATA_DIR"/*
+start paso5 3 || { echo "ERROR: el servidor no arrancó"; exit 2; }
+A=$(submit_id sleep 40); sleep 0.3; PA=$(job_pid "sleep 40")
+for mode in json-malformado op-desconocida id-no-numerico args-no-texto frame-gigante; do
+    echo "-- $mode"
+    check "$mode: el servidor rechaza la solicitud de forma explícita" abuse "$mode"
+    check "$mode: el servidor sigue vivo y atiende" bash -c "kill -0 $SERVER_PID && timeout 5 '$CLI_BIN' '$SOCK' list >/dev/null"
+done
+for mode in frame-truncado sin-enviar cierra-antes-de-leer cierra-lectura; do
+    echo "-- $mode"
+    abuse "$mode"; sleep 0.3
+    check "$mode: el servidor sigue vivo y atiende" bash -c "kill -0 $SERVER_PID && timeout 5 '$CLI_BIN' '$SOCK' list >/dev/null"
+    if ! alive; then
+        wait "$SERVER_PID" 2>/dev/null
+        echo "   el servidor terminó (código $?); se reinicia para los modos siguientes"
+        start "paso5-tras-$mode" 3
+    fi
+done
+check "el Job en ejecución no se vio afectado (RF-22)" bash -c "[ '$(job_field "$A" state)' = 'RUNNING' ] && kill -0 $PA"
+stop
+
+EXPECTED_CHECKS=40   # comprobaciones que ejecuta el script completo (si cambia, actualizar)
 echo "== Comprobaciones ejecutadas: $CHECKS (esperadas: $EXPECTED_CHECKS) | fallos: $FAILS"
 if [ "$CHECKS" -ne "$EXPECTED_CHECKS" ]; then
     echo "[FAIL] el número de comprobaciones ejecutadas no coincide con el esperado"; FAILS=$((FAILS+1))

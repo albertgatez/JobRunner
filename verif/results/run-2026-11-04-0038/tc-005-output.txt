@@ -1,0 +1,62 @@
+== TC-005 run-id=run-2026-11-04-0038 commit=d920a83
+== Paso 1: pruebas unitarias [TC-005]
+Randomness seeded to: 610896901
+===============================================================================
+All tests passed (12 assertions in 4 test cases)
+
+[OK]   pruebas unitarias [TC-005] en verde
+== Paso 2: límite 1 -> A en ejecución, B y C en cola
+A=1 B=2 C=3 -> RUNNING QUEUED QUEUED (pid de A: 15332)
+[OK]   estado inicial: A RUNNING, B y C QUEUED
+[OK]   se identificó el proceso de A
+    PID    PGID STAT CMD
+  15332   15332 S    sleep 30
+== Paso 3: cancelar B (QUEUED)
+{
+  "ok": true
+} (rc=0)
+[OK]   cancel de un Job en cola: ok=true y rc=0
+[OK]   B queda CANCELED con finished_at y sin started_at
+[OK]   A sigue RUNNING y C sigue QUEUED
+[OK]   nunca se creó un proceso para B
+== Paso 4: cancelar A (RUNNING)
+{
+  "ok": true
+} (rc=0)
+estado de A justo después: CANCELED
+[OK]   cancel de un Job en ejecución: ok=true y rc=0
+[OK]   A se reporta CANCELED de inmediato
+[OK]   el proceso de A (pid 15332) termina en menos de 3 s
+[OK]   C, el siguiente en cola, pasa a RUNNING
+[OK]   B sigue CANCELED y nunca arrancó
+    PID    PGID STAT CMD
+  15387   15387 S    sleep 32
+== Paso 5: cancelaciones sin efecto
+cancel de un Job terminado: {
+  "ok": true
+} (rc=0)
+[OK]   cancelar un Job terminado: ok=true y rc=0
+[OK]   el Job terminado conserva SUCCEEDED y exit_code 0
+segundo cancel de A: {
+  "ok": true
+} (rc=0)
+[OK]   cancelar dos veces el mismo Job: ok=true y rc=0
+[OK]   el segundo cancel no cambia el estado ni finished_at
+id desconocido: {
+  "error": "job desconocido",
+  "ok": false
+} (rc=1)
+[OK]   cancelar un id desconocido: ok=false con mensaje
+[OK]   cancelar un id desconocido: rc del cliente != 0
+== Paso 6: Job que ignora SIGTERM -> SIGKILL a los 5 s (RF-30)
+Job 5, grupo 15457
+[OK]   se identificó el proceso del Job
+[OK]   se reporta CANCELED de inmediato
+[OK]   2 s después el grupo sigue vivo (ignoró SIGTERM)
+el grupo desapareció a los 5.0 s
+[OK]   no queda ningún proceso del grupo
+[OK]   el escalamiento ocurrió entre 4 y 8 s después del cancel
+[OK]   la bitácora registra el SIGKILL del Job 5
+[OK]   el Job sigue CANCELED tras el SIGKILL
+== Comprobaciones ejecutadas: 25 (esperadas: 25) | fallos: 0
+RESULTADO TC-005: PASS

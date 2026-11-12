@@ -1,0 +1,22 @@
+2026-11-04T00:38:40 [INFO] base de datos: /tmp/tmp.goRg8DMPdG/jobrunner.db
+2026-11-04T00:38:40 [INFO] recuperacion completada: 0 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-11-04T00:38:40 [INFO] JobRunner escuchando en /tmp/jobrunner-tc002.sock
+2026-11-04T00:38:40 [INFO] job=1 job recibido: sleep
+2026-11-04T00:38:40 [INFO] job=1 job en ejecucion (pid 13258)
+2026-11-04T00:38:40 [INFO] job=2 job recibido: sleep
+2026-11-04T00:38:40 [INFO] job=2 job en ejecucion (pid 13261)
+2026-11-04T00:38:40 [INFO] job=3 job recibido: sleep
+2026-11-04T00:38:40 [INFO] job=3 job en ejecucion (pid 13264)
+2026-11-04T00:38:40 [INFO] job=4 job recibido: sleep
+2026-11-04T00:38:40 [INFO] job=4 job encolado, en espera de cupo
+2026-11-04T00:38:40 [INFO] job=5 job recibido: sleep
+2026-11-04T00:38:40 [INFO] job=5 job encolado, en espera de cupo
+2026-11-04T00:38:41 [INFO] job=1 job finalizado (codigo -1)
+2026-11-04T00:38:41 [INFO] job=4 job en ejecucion (pid 13325)
+2026-11-04T00:38:47 [INFO] job=2 job finalizado (codigo 0)
+2026-11-04T00:38:47 [INFO] job=5 job en ejecucion (pid 13678)
+2026-11-04T00:38:48 [INFO] job=3 job finalizado (codigo 0)
+2026-11-04T00:38:50 [INFO] job=4 job finalizado (codigo 0)
+2026-11-04T00:38:57 [INFO] job=5 job finalizado (codigo 0)
+2026-11-04T00:38:58 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-11-04T00:38:58 [INFO] JobRunner detenido

@@ -1,0 +1,23 @@
+2026-11-04T00:42:07 [INFO] base de datos: /tmp/tmp.y03W5UoyLA/jobrunner.db
+2026-11-04T00:42:07 [INFO] recuperacion completada: 0 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-11-04T00:42:07 [INFO] JobRunner escuchando en /tmp/jobrunner-tc008.sock
+2026-11-04T00:42:07 [INFO] job=1 job recibido: sleep
+2026-11-04T00:42:07 [INFO] job=1 job en ejecucion (pid 21348)
+2026-11-04T00:42:07 [INFO] job=2 job recibido: sleep
+2026-11-04T00:42:07 [INFO] job=2 job en ejecucion (pid 21355)
+2026-11-04T00:42:07 [INFO] job=3 job recibido: sleep
+2026-11-04T00:42:07 [INFO] job=3 job en ejecucion (pid 21362)
+2026-11-04T00:42:07 [INFO] job=4 job recibido: sleep
+2026-11-04T00:42:07 [INFO] job=4 job encolado, en espera de cupo
+2026-11-04T00:42:08 [INFO] job=3 job finalizado (codigo -1)
+2026-11-04T00:42:08 [INFO] job=4 job en ejecucion (pid 21386)
+2026-11-04T00:42:08 [INFO] job=4 job finalizado (codigo -1)
+2026-11-04T00:42:09 [INFO] job=5 job recibido: sh
+2026-11-04T00:42:09 [INFO] job=5 job en ejecucion (pid 21439)
+2026-11-04T00:42:09 [INFO] job=5 job finalizado (codigo -1)
+2026-11-04T00:42:09 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-11-04T00:42:09 [INFO] job=2 cancelado por cierre del servicio (SIGTERM al pid 21355)
+2026-11-04T00:42:09 [INFO] job=1 cancelado por cierre del servicio (SIGTERM al pid 21348)
+2026-11-04T00:42:09 [INFO] job=2 job finalizado (codigo -1)
+2026-11-04T00:42:09 [INFO] job=1 job finalizado (codigo -1)
+2026-11-04T00:42:09 [INFO] JobRunner detenido

@@ -1,0 +1,5 @@
+Filters: [TC-006]
+Randomness seeded to: 2652035279
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+

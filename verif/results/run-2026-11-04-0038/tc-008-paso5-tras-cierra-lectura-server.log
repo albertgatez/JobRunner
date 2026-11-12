@@ -1,0 +1,6 @@
+2026-11-04T00:39:29 [INFO] base de datos: /tmp/tmp.bYztKGhBxK/jobrunner.db
+2026-11-04T00:39:29 [INFO] job=1 interrumpido por reinicio del servicio, marcado FAILED
+2026-11-04T00:39:29 [INFO] recuperacion completada: 0 reencolado(s), 1 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-11-04T00:39:29 [INFO] JobRunner escuchando en /tmp/jobrunner-tc008.sock
+2026-11-04T00:39:29 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-11-04T00:39:29 [INFO] JobRunner detenido

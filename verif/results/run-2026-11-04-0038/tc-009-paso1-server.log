@@ -1,0 +1,19 @@
+2026-11-04T00:39:29 [INFO] base de datos: /tmp/tmp.DEyiTELFMQ/jobrunner.db
+2026-11-04T00:39:29 [INFO] recuperacion completada: 0 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-11-04T00:39:29 [INFO] JobRunner escuchando en /tmp/jobrunner-tc009.sock
+2026-11-04T00:39:29 [INFO] job=1 job recibido: sleep
+2026-11-04T00:39:29 [INFO] job=1 job en ejecucion (pid 16395)
+2026-11-04T00:39:29 [INFO] job=2 job recibido: sleep
+2026-11-04T00:39:29 [INFO] job=2 job en ejecucion (pid 16398)
+2026-11-04T00:39:29 [INFO] job=3 job recibido: sleep
+2026-11-04T00:39:29 [INFO] job=3 job en ejecucion (pid 16401)
+2026-11-04T00:39:29 [INFO] job=4 job recibido: sleep
+2026-11-04T00:39:29 [INFO] job=4 job encolado, en espera de cupo
+2026-11-04T00:39:29 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-11-04T00:39:29 [INFO] job=3 cancelado por cierre del servicio (SIGTERM al pid 16401)
+2026-11-04T00:39:29 [INFO] job=2 cancelado por cierre del servicio (SIGTERM al pid 16398)
+2026-11-04T00:39:29 [INFO] job=1 cancelado por cierre del servicio (SIGTERM al pid 16395)
+2026-11-04T00:39:29 [INFO] job=3 job finalizado (codigo -1)
+2026-11-04T00:39:29 [INFO] job=2 job finalizado (codigo -1)
+2026-11-04T00:39:29 [INFO] job=1 job finalizado (codigo -1)
+2026-11-04T00:39:29 [INFO] JobRunner detenido

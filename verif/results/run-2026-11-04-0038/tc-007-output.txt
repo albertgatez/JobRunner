@@ -1,0 +1,63 @@
+== TC-007 run-id=run-2026-11-04-0038 commit=d920a83
+== Paso 1: pruebas unitarias [TC-007]
+Randomness seeded to: 3244307139
+===============================================================================
+All tests passed (56 assertions in 6 test cases)
+
+[OK]   pruebas unitarias [TC-007] en verde
+== Paso 2: Jobs en todos los estados antes de la caída (límite 3)
+antes del kill -9:
+  job 1 echo     SUCCEEDED  
+  job 2 sh       FAILED     
+  job 3 sleep    RUNNING    
+  job 4 python3  RUNNING    
+  job 5 bash     RUNNING    
+  job 6 sleep    QUEUED     
+  job 7 sleep    CANCELED   
+[OK]   estados antes de la caída: terminados, 3 RUNNING, 1 QUEUED y 1 CANCELED
+[OK]   se identificaron los procesos de los Jobs en ejecución
+== Paso 3: caída abrupta del servidor (kill -9) mientras un Job escribe
+[OK]   el líder del Job sleep 120 murió con el servidor
+[OK]   el Job que escribía murió con el servidor
+el subproceso sleep 125 (pid 15843) sigue vivo tras la caída: lo debe terminar la recuperación
+PRAGMA integrity_check: ok
+[OK]   la base no quedó dañada por la caída (RNF-11, RNF-28)
+== Paso 4: arranque sobre la misma base
+tras reiniciar:
+  job 1 echo     SUCCEEDED  
+  job 2 sh       FAILED     
+  job 3 sleep    FAILED     interrumpido por reinicio del servicio
+  job 4 python3  FAILED     interrumpido por reinicio del servicio
+  job 5 bash     FAILED     interrumpido por reinicio del servicio
+  job 6 sleep    RUNNING    
+  job 7 sleep    CANCELED   
+[OK]   el Job SUCCEEDED conserva salida, código y tiempos (RF-12)
+[OK]   el Job FAILED conserva stderr y exit_code 4
+[OK]   el Job CANCELED sigue CANCELED y nunca arrancó
+[OK]   los 3 Jobs interrumpidos pasan a FAILED con diagnóstico y finished_at (RF-13, RNF-10)
+[OK]   se conserva la salida que el Job escribió antes de la caída
+[OK]   el subproceso huérfano sleep 125 fue terminado al arrancar (RNF-30)
+[OK]   el Job en cola se reencoló y se ejecuta (RNF-31)
+[OK]   solo el Job reencolado aparece RUNNING
+[OK]   el Job RUNNING tiene un proceso vivo
+[OK]   un Job nuevo recibe un id mayor que los anteriores (8 > 7)
+[OK]   la bitácora registra la recuperación
+== Paso 5: cierre controlado y nuevo arranque
+[OK]   con 3 Jobs en ejecución, el cuarto queda en cola
+[OK]   el servidor cerró con código 0
+tras el cierre controlado y el arranque:
+  job 1 echo     SUCCEEDED  
+  job 2 sh       FAILED     
+  job 3 sleep    FAILED     interrumpido por reinicio del servicio
+  job 4 python3  FAILED     interrumpido por reinicio del servicio
+  job 5 bash     FAILED     interrumpido por reinicio del servicio
+  job 6 sleep    CANCELED   cancelado por cierre del servicio
+  job 7 sleep    CANCELED   
+  job 8 sleep    CANCELED   cancelado por cierre del servicio
+  job 9 sleep    CANCELED   cancelado por cierre del servicio
+  job 10 sleep    RUNNING    
+[OK]   los Jobs que corrían quedan CANCELED con diagnóstico de cierre
+[OK]   el Job en cola se conservó y arranca tras reiniciar
+[OK]   no queda vivo ningún proceso de los Jobs cancelados
+== Comprobaciones ejecutadas: 22 (esperadas: 22) | fallos: 0
+RESULTADO TC-007: PASS
