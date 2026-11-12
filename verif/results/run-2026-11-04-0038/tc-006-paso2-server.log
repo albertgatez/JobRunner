@@ -1,0 +1,32 @@
+2026-11-04T00:39:15 [INFO] base de datos: /tmp/tmp.mCr5NaI0ef/jobrunner.db
+2026-11-04T00:39:15 [INFO] recuperacion completada: 0 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-11-04T00:39:15 [INFO] JobRunner escuchando en /tmp/jobrunner-tc006.sock
+2026-11-04T00:39:15 [INFO] job=1 job recibido: sh
+2026-11-04T00:39:15 [INFO] job=1 job en ejecucion (pid 15563)
+2026-11-04T00:39:15 [INFO] job=1 job finalizado (codigo 3)
+2026-11-04T00:39:15 [INFO] job=2 job recibido: sh
+2026-11-04T00:39:15 [INFO] job=2 job en ejecucion (pid 15591)
+2026-11-04T00:39:15 [INFO] job=2 job finalizado (codigo 0)
+2026-11-04T00:39:15 [INFO] job=3 job recibido: sh
+2026-11-04T00:39:15 [INFO] job=3 job en ejecucion (pid 15597)
+2026-11-04T00:39:15 [INFO] job=3 job finalizado (codigo 0)
+2026-11-04T00:39:15 [INFO] job=4 job recibido: sh
+2026-11-04T00:39:15 [INFO] job=4 job en ejecucion (pid 15652)
+2026-11-04T00:39:15 [INFO] job=4 job finalizado (codigo 0)
+2026-11-04T00:39:15 [INFO] job=5 job recibido: python3
+2026-11-04T00:39:15 [INFO] job=5 job en ejecucion (pid 15676)
+2026-11-04T00:39:16 [INFO] job=5 job finalizado (codigo 0)
+2026-11-04T00:39:16 [INFO] job=6 job recibido: sh
+2026-11-04T00:39:16 [INFO] job=6 job en ejecucion (pid 15700)
+2026-11-04T00:39:16 [INFO] job=6 job finalizado (codigo 0)
+2026-11-04T00:39:16 [INFO] job=7 job recibido: sh
+2026-11-04T00:39:16 [INFO] job=7 job en ejecucion (pid 15706)
+2026-11-04T00:39:16 [INFO] job=7 job finalizado (codigo 42)
+2026-11-04T00:39:16 [INFO] job=8 job recibido: sh
+2026-11-04T00:39:16 [INFO] job=8 job en ejecucion (pid 15712)
+2026-11-04T00:39:16 [INFO] job=8 job finalizado (codigo -1)
+2026-11-04T00:39:16 [INFO] job=9 job recibido: comando-que-no-existe-tc006
+2026-11-04T00:39:16 [INFO] job=9 job en ejecucion (pid 15718)
+2026-11-04T00:39:16 [INFO] job=9 job finalizado (codigo 127)
+2026-11-04T00:39:16 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-11-04T00:39:16 [INFO] JobRunner detenido

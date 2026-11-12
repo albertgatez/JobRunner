@@ -1,0 +1,169 @@
+--- ambos flujos (job 1)
+{
+  "job": {
+    "args": [
+      "-c",
+      "echo salida-1; echo error-1 >&2; echo salida-2; exit 3"
+    ],
+    "command": "sh",
+    "exit_code": 3,
+    "finished_at": "2026-11-04T06:39:15.505Z",
+    "id": 1,
+    "received_at": "2026-11-04T06:39:15.503Z",
+    "started_at": "2026-11-04T06:39:15.504Z",
+    "state": "FAILED",
+    "stderr": "error-1\n",
+    "stdout": "salida-1\nsalida-2\n"
+  },
+  "ok": true
+}
+--- solo stdout (job 2)
+{
+  "job": {
+    "args": [
+      "-c",
+      "printf solo-out"
+    ],
+    "command": "sh",
+    "exit_code": 0,
+    "finished_at": "2026-11-04T06:39:15.645Z",
+    "id": 2,
+    "received_at": "2026-11-04T06:39:15.643Z",
+    "started_at": "2026-11-04T06:39:15.644Z",
+    "state": "SUCCEEDED",
+    "stderr": "",
+    "stdout": "solo-out"
+  },
+  "ok": true
+}
+--- solo stderr (job 3)
+{
+  "job": {
+    "args": [
+      "-c",
+      "echo solo-err >&2"
+    ],
+    "command": "sh",
+    "exit_code": 0,
+    "finished_at": "2026-11-04T06:39:15.666Z",
+    "id": 3,
+    "received_at": "2026-11-04T06:39:15.664Z",
+    "started_at": "2026-11-04T06:39:15.665Z",
+    "state": "SUCCEEDED",
+    "stderr": "solo-err\n",
+    "stdout": ""
+  },
+  "ok": true
+}
+--- alternado (job 4)
+{
+  "job": {
+    "args": [
+      "-c",
+      "for i in 1 2 3 4 5; do echo out$i; echo err$i >&2; done"
+    ],
+    "command": "sh",
+    "exit_code": 0,
+    "finished_at": "2026-11-04T06:39:15.895Z",
+    "id": 4,
+    "received_at": "2026-11-04T06:39:15.893Z",
+    "started_at": "2026-11-04T06:39:15.894Z",
+    "state": "SUCCEEDED",
+    "stderr": "err1\nerr2\nerr3\nerr4\nerr5\n",
+    "stdout": "out1\nout2\nout3\nout4\nout5\n"
+  },
+  "ok": true
+}
+--- salida grande (job 5)
+{
+  "job": {
+    "args": [
+      "-c",
+      "import sys; sys.stdout.write(\"x\" * 200000); sys.stderr.write(\"y\" * 100000)"
+    ],
+    "command": "python3",
+    "exit_code": 0,
+    "finished_at": "2026-11-04T06:39:16.031Z",
+    "id": 5,
+    "received_at": "2026-11-04T06:39:15.996Z",
+    "started_at": "2026-11-04T06:39:15.996Z",
+    "state": "SUCCEEDED",
+    "stderr": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy... (100000 bytes)",
+    "stdout": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx... (200000 bytes)"
+  },
+  "ok": true
+}
+--- exit 0 (job 6)
+{
+  "job": {
+    "args": [
+      "-c",
+      "exit 0"
+    ],
+    "command": "sh",
+    "exit_code": 0,
+    "finished_at": "2026-11-04T06:39:16.227Z",
+    "id": 6,
+    "received_at": "2026-11-04T06:39:16.226Z",
+    "started_at": "2026-11-04T06:39:16.226Z",
+    "state": "SUCCEEDED",
+    "stderr": "",
+    "stdout": ""
+  },
+  "ok": true
+}
+--- exit 42 (job 7)
+{
+  "job": {
+    "args": [
+      "-c",
+      "exit 42"
+    ],
+    "command": "sh",
+    "exit_code": 42,
+    "finished_at": "2026-11-04T06:39:16.247Z",
+    "id": 7,
+    "received_at": "2026-11-04T06:39:16.246Z",
+    "started_at": "2026-11-04T06:39:16.246Z",
+    "state": "FAILED",
+    "stderr": "",
+    "stdout": ""
+  },
+  "ok": true
+}
+--- SIGKILL (job 8)
+{
+  "job": {
+    "args": [
+      "-c",
+      "kill -KILL $$"
+    ],
+    "command": "sh",
+    "exit_code": -1,
+    "exit_signal": 9,
+    "finished_at": "2026-11-04T06:39:16.268Z",
+    "id": 8,
+    "received_at": "2026-11-04T06:39:16.266Z",
+    "started_at": "2026-11-04T06:39:16.267Z",
+    "state": "FAILED",
+    "stderr": "",
+    "stdout": ""
+  },
+  "ok": true
+}
+--- comando inexistente (job 9)
+{
+  "job": {
+    "args": [],
+    "command": "comando-que-no-existe-tc006",
+    "exit_code": 127,
+    "finished_at": "2026-11-04T06:39:16.395Z",
+    "id": 9,
+    "received_at": "2026-11-04T06:39:16.286Z",
+    "started_at": "2026-11-04T06:39:16.287Z",
+    "state": "FAILED",
+    "stderr": "",
+    "stdout": ""
+  },
+  "ok": true
+}

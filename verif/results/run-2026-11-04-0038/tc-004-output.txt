@@ -1,0 +1,70 @@
+== TC-004 run-id=run-2026-11-04-0038 commit=d920a83
+== Paso 1: pruebas unitarias [TC-004]
+Randomness seeded to: 241897978
+===============================================================================
+All tests passed (7 assertions in 2 test cases)
+
+[OK]   pruebas unitarias [TC-004] en verde
+== Paso 2: preparar un Job en cada estado (límite 3)
+ids: SUCCEEDED=1 FAILED=2 RUNNING=3,4,5 QUEUED=6 CANCELED=7
+  job 1 echo hola -> SUCCEEDED
+  job 2 false  -> FAILED
+  job 3 sleep 30 -> RUNNING
+  job 4 sleep 31 -> RUNNING
+  job 5 sleep 32 -> RUNNING
+  job 6 sleep 33 -> QUEUED
+  job 7 sleep 34 -> CANCELED
+== Paso 3: status por ID (RF-08)
+{
+  "job": {
+    "args": [
+      "hola"
+    ],
+    "command": "echo",
+    "exit_code": 0,
+    "finished_at": "2026-11-04T06:39:05.370Z",
+    "id": 1,
+    "received_at": "2026-11-04T06:39:05.367Z",
+    "started_at": "2026-11-04T06:39:05.368Z",
+    "state": "SUCCEEDED",
+    "stderr": "",
+    "stdout": "hola\n"
+  },
+  "ok": true
+}
+[OK]   status de un Job existente: rc del cliente = 0
+[OK]   devuelve id, comando y argumentos
+[OK]   devuelve estado SUCCEEDED, exit_code 0 y stdout
+[OK]   devuelve received_at, started_at y finished_at
+[OK]   un Job RUNNING tiene started_at y no finished_at
+[OK]   un Job QUEUED no tiene started_at
+id desconocido: {
+  "error": "job desconocido",
+  "ok": false
+} (rc=1)
+[OK]   id desconocido: ok=false con mensaje
+[OK]   id desconocido: rc del cliente != 0
+== Paso 4: list y filtro por estado (RF-09)
+[OK]   list sin filtro devuelve los 7 Jobs
+[OK]   list SUCCEEDED devuelve solo los Jobs 1
+[OK]   list FAILED devuelve solo los Jobs 2
+[OK]   list RUNNING devuelve solo los Jobs 3,4,5
+[OK]   list QUEUED devuelve solo los Jobs 6
+[OK]   list CANCELED devuelve solo los Jobs 7
+estado inválido: {
+  "error": "estado desconocido: NO_EXISTE",
+  "ok": false
+} (rc=1)
+[OK]   estado inválido: ok=false con mensaje
+[OK]   estado inválido: rc del cliente != 0
+== Paso 5: status con al menos 100 Jobs almacenados (RNF-05)
+Jobs de carga enviados: 100 (reintentos por cola llena: 0)
+[OK]   hay al menos 100 Jobs almacenados (107)
+[OK]   los 100 Jobs de carga terminaron SUCCEEDED
+status 1 con 107 Jobs: 7 ms
+status 53 con 107 Jobs: 8 ms
+status 107 con 107 Jobs: 9 ms
+list con 107 Jobs: 17 ms (informativo)
+[OK]   status responde en <= 1000 ms (máximo: 9 ms, incluye arrancar el cliente)
+== Comprobaciones ejecutadas: 20 (esperadas: 20) | fallos: 0
+RESULTADO TC-004: PASS

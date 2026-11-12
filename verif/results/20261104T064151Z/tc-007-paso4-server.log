@@ -1,0 +1,22 @@
+2026-11-04T00:41:54 [INFO] base de datos: /tmp/tmp.rlG9uuNLJT/jobrunner.db
+2026-11-04T00:41:54 [INFO] job=3 interrumpido por reinicio del servicio, marcado FAILED
+2026-11-04T00:41:54 [INFO] job=4 interrumpido por reinicio del servicio, marcado FAILED
+2026-11-04T00:41:54 [INFO] job=5 interrumpido por reinicio del servicio, marcado FAILED (1 proceso(s) huerfano(s) terminado(s))
+2026-11-04T00:41:54 [INFO] job=6 job reencolado tras reinicio
+2026-11-04T00:41:54 [INFO] recuperacion completada: 1 reencolado(s), 3 interrumpido(s), 1 proceso(s) huerfano(s) terminado(s)
+2026-11-04T00:41:54 [INFO] job=6 job en ejecucion (pid 21048)
+2026-11-04T00:41:54 [INFO] JobRunner escuchando en /tmp/jobrunner-tc007.sock
+2026-11-04T00:41:55 [INFO] job=8 job recibido: sleep
+2026-11-04T00:41:55 [INFO] job=8 job en ejecucion (pid 21096)
+2026-11-04T00:41:55 [INFO] job=9 job recibido: sleep
+2026-11-04T00:41:55 [INFO] job=9 job en ejecucion (pid 21103)
+2026-11-04T00:41:55 [INFO] job=10 job recibido: sleep
+2026-11-04T00:41:55 [INFO] job=10 job encolado, en espera de cupo
+2026-11-04T00:41:56 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-11-04T00:41:56 [INFO] job=9 cancelado por cierre del servicio (SIGTERM al pid 21103)
+2026-11-04T00:41:56 [INFO] job=8 cancelado por cierre del servicio (SIGTERM al pid 21096)
+2026-11-04T00:41:56 [INFO] job=6 cancelado por cierre del servicio (SIGTERM al pid 21048)
+2026-11-04T00:41:56 [INFO] job=8 job finalizado (codigo -1)
+2026-11-04T00:41:56 [INFO] job=6 job finalizado (codigo -1)
+2026-11-04T00:41:56 [INFO] job=9 job finalizado (codigo -1)
+2026-11-04T00:41:56 [INFO] JobRunner detenido

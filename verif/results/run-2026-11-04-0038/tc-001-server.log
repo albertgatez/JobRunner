@@ -1,0 +1,14 @@
+2026-11-04T00:38:40 [INFO] base de datos: /tmp/tmp.plZvcBpNPg/jobrunner.db
+2026-11-04T00:38:40 [INFO] recuperacion completada: 0 reencolado(s), 0 interrumpido(s), 0 proceso(s) huerfano(s) terminado(s)
+2026-11-04T00:38:40 [INFO] JobRunner escuchando en /tmp/jobrunner-tc001.sock
+2026-11-04T00:38:40 [INFO] job=1 job recibido: echo
+2026-11-04T00:38:40 [INFO] job=1 job en ejecucion (pid 13181)
+2026-11-04T00:38:40 [INFO] job=1 job finalizado (codigo 0)
+2026-11-04T00:38:40 [INFO] job=2 job recibido: echo
+2026-11-04T00:38:40 [INFO] job=2 job en ejecucion (pid 13192)
+2026-11-04T00:38:40 [INFO] job=2 job finalizado (codigo 0)
+2026-11-04T00:38:40 [INFO] job=3 job recibido: echo
+2026-11-04T00:38:40 [INFO] job=3 job en ejecucion (pid 13237)
+2026-11-04T00:38:40 [INFO] job=3 job finalizado (codigo 0)
+2026-11-04T00:38:40 [INFO] señal de apagado recibida, dejando de aceptar trabajos nuevos
+2026-11-04T00:38:40 [INFO] JobRunner detenido

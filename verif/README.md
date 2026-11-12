@@ -7,7 +7,7 @@ Casos de prueba, scripts y evidencia de J.U.A.N. (JobRunner). Todos los comandos
 | Carpeta | Qué hay |
 |---|---|
 | `test-cases/` | Casos de prueba (`TC-00X.md`) y la plantilla `TC-Template.md` |
-| `scripts/` | Scripts que ejecutan un caso contra el servidor real (`tc-001.sh`, `tc-002.sh`, `tc-003.sh`, `tc-009.sh`) y `common.sh` con funciones compartidas |
+| `scripts/` | Scripts que ejecutan un caso contra el servidor real (`tc-001.sh` a `tc-009.sh`) y `common.sh` con funciones compartidas |
 | `results/<run-id>/` | Evidencia de cada corrida: salidas, bitácoras del servidor y resultados |
 | `verification-plan/` | Matriz de trazabilidad (en construcción) |
 | `test-data/` | Datos de prueba |
@@ -59,6 +59,11 @@ RUN=run-$(date +%F)-01
 BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-001.sh
 BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-002.sh
 BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-003.sh
+BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-004.sh
+BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-005.sh
+BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-006.sh
+BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-007.sh
+BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-008.sh
 BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-009.sh
 ```
 
@@ -67,7 +72,7 @@ BUILD_DIR=build RUN_ID=$RUN verif/scripts/tc-009.sh
 | `BUILD_DIR` | Carpeta con los binarios compilados | `build` |
 | `RUN_ID` | Nombre de la carpeta de evidencia en `verif/results/` | fecha y hora UTC |
 
-Cada script arranca y detiene su propio servidor (un socket `/tmp/jobrunner-tc00X.sock` por caso), así que no hace falta tener nada corriendo. TC-002 y TC-003 tardan unos 15 s; TC-009 comprueba además el plazo de gracia de cierre.
+Cada script arranca y detiene su propio servidor (un socket `/tmp/jobrunner-tc00X.sock` por caso), así que no hace falta tener nada corriendo. Cada script usa además una base SQLite temporal, así que no depende de `./data` ni de corridas anteriores. TC-002 y TC-003 tardan unos 15 s; TC-009 comprueba además el plazo de gracia de cierre.
 
 **Cómo leer el resultado:** el script imprime `[OK]` o `[FAIL]` por cada comprobación y termina con `RESULTADO TC-00X: PASS` o `FAIL`. El código de salida es 0 solo si pasa, y 1 si falla cualquier comprobación o si no se ejecuta el número esperado de comprobaciones.
 
@@ -98,7 +103,11 @@ Para que cuente como evidencia en la matriz, ejecuta los scripts sobre el commit
 | TC-001 Envío de Jobs y solicitudes inválidas | PASS | `verif/scripts/tc-001.sh` |
 | TC-002 Límite de concurrencia y cola | PASS | `verif/scripts/tc-002.sh` |
 | TC-003 Estados, tiempos y código de salida | PASS | `verif/scripts/tc-003.sh` |
-| TC-008 Aislamiento de fallo: error al crear el proceso | PASS | `verif/scripts/tc-008.sh` |
+| TC-004 Consultar y listar | Sin ejecutar | `verif/scripts/tc-004.sh` |
+| TC-005 Cancelar en cola y en ejecución | Sin ejecutar | `verif/scripts/tc-005.sh` |
+| TC-006 Captura de stdout/stderr y código de salida | Sin ejecutar | `verif/scripts/tc-006.sh` |
+| TC-007 Reinicio y recuperación | Sin ejecutar | `verif/scripts/tc-007.sh` |
+| TC-008 Aislamiento de fallo | Pasos 1-3 PASS; pasos 4-5 sin ejecutar | `verif/scripts/tc-008.sh` |
 | TC-009 Cierre controlado sin procesos huérfanos | PASS (15/15) | `verif/scripts/tc-009.sh` |
 
 TC-009 tiene evidencia en `verif/results/run-2026-10-30-inc02-3-correccion/` y `verif/results/run-2026-10-30-inc02-4-carpeta-de-trabajo/`. El caso formal está descrito en [`test-cases/TC-009.md`](test-cases/TC-009.md).
